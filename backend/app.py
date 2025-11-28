@@ -25,7 +25,7 @@ from TextProcessing.preprocessing import ChunkPreprocessor
 SAMPLE_RATE = 16_000
 BLOCK_DURATION = 0.5  # seconds per chunk
 MODEL_SIZE = "small"
-CHUNK_SECONDS = 4
+CHUNK_SECONDS = 6
 MAX_HISTORY = 200
 
 BACKEND_DIR = Path(__file__).resolve().parent
@@ -293,7 +293,16 @@ async def api_transcripts(limit: int = 50) -> Dict[str, object]:
     limit = max(1, min(limit, MAX_HISTORY))
     with history_lock:
         items = list(RESULT_HISTORY)[-limit:]
-    return {"items": items, "count": len(items)}
+
+    paragraph = " ".join(entry["text"].strip() for entry in items if entry.get("text")).strip()
+    current = items[-1] if items else None
+
+    return {
+        "paragraph": paragraph,
+        "current": current,
+        "items": items,
+        "count": len(items),
+    }
 
 
 class ControlRequest(BaseModel):

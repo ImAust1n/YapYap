@@ -231,37 +231,48 @@
         justify-content: space-between;
       }
 
-      .transcript-list {
-        margin: 0;
-        padding: 0;
-        list-style: none;
+      .transcript-content {
         display: grid;
-        gap: 1rem;
-        max-height: 360px;
-        overflow-y: auto;
-        padding-right: 0.5rem;
+        gap: 1.25rem;
       }
 
-      .transcript-item {
-        padding: 1rem 1.25rem;
+      @media (min-width: 820px) {
+        .transcript-content {
+          grid-template-columns: minmax(0, 320px) 1fr;
+        }
+      }
+
+      .transcript-box {
+        padding: 1.15rem 1.35rem;
         border-radius: 16px;
         background: rgba(15, 23, 42, 0.75);
         border: 1px solid rgba(148, 163, 184, 0.08);
         display: grid;
-        gap: 0.6rem;
+        gap: 0.75rem;
+        min-height: 140px;
       }
 
-      .transcript-item time {
-        font-size: 0.8rem;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        color: var(--text-muted);
-      }
-
-      .transcript-item p {
+      .transcript-box h3 {
         margin: 0;
         font-size: 1rem;
-        line-height: 1.5;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .live-text {
+        margin: 0;
+        font-size: 1.1rem;
+        line-height: 1.6;
+      }
+
+      .paragraph-text {
+        margin: 0;
+        font-size: 1rem;
+        line-height: 1.7;
+        color: var(--text-primary);
+        white-space: pre-wrap;
       }
 
       .latency-pill {
@@ -273,6 +284,10 @@
         border-radius: 10px;
         background: rgba(56, 189, 248, 0.12);
         color: var(--accent);
+      }
+
+      .latency-pill.hidden {
+        display: none;
       }
 
       .chart-wrapper {
@@ -345,7 +360,19 @@
           <h2 class="section-title">Live Transcripts</h2>
           <span class="badge" id="history-count">Fetching…</span>
         </header>
-        <ul class="transcript-list" id="transcript-list"></ul>
+        <div class="transcript-content">
+          <div class="transcript-box">
+            <h3>Current Sentence</h3>
+            <p id="current-utterance" class="live-text">Waiting for audio…</p>
+            <div id="current-meta" class="latency-pill hidden"></div>
+          </div>
+          <div class="transcript-box">
+            <h3>Transcript</h3>
+            <p id="transcript-paragraph" class="paragraph-text">
+              The live transcript will appear here once speech is detected.
+            </p>
+          </div>
+        </div>
       </section>
 
       <section class="card">
@@ -363,7 +390,9 @@
       const statusIndicator = document.getElementById("status-indicator");
       const statusMeta = document.getElementById("status-meta");
       const metricsGrid = document.getElementById("metrics-grid");
-      const transcriptList = document.getElementById("transcript-list");
+      const transcriptParagraph = document.getElementById("transcript-paragraph");
+      const currentUtterance = document.getElementById("current-utterance");
+      const currentMeta = document.getElementById("current-meta");
       const historyBadge = document.getElementById("history-count");
       const errorBanner = document.getElementById("error-banner");
       const startBtn = document.getElementById("start-btn");
@@ -424,25 +453,36 @@
           : "Awaiting audio…";
       }
 
-      function renderTranscripts(items) {
-        transcriptList.innerHTML = items
-          .map((item) => {
-            const raw = formatLatency(item.raw_latency_ms);
-            const processed = formatLatency(item.processed_latency_ms);
-            const preprocess = formatLatency(item.preprocessing_total_ms);
-            return `
-              <li class="transcript-item">
-                <time>${formatDate(item.timestamp)}</time>
-                <p>${item.text}</p>
-                <div class="latency-pill">
-                  <span>Raw: ${raw}</span>
-                  <span>Proc: ${processed}</span>
-                  <span>Pre: ${preprocess}</span>
-                </div>
-              </li>
-            `;
-          })
-          .join("");
+      function renderTranscripts(data) {
+        const { paragraph = "", current = null, count = 0 } = data ?? {};
+
+        historyBadge.textContent = `${count} entries`;
+
+        const currentText = current?.text?.trim();
+        if (currentText) {
+          currentUtterance.textContent = currentText;
+        } else {
+          currentUtterance.textContent = "Waiting for audio…";
+        }
+
+        const raw = current?.raw_latency_ms;
+        const processed = current?.processed_latency_ms;
+        const preprocess = current?.preprocessing_total_ms;
+
+        if (current && (raw != null || processed != null || preprocess != null)) {
+          currentMeta.innerHTML = `
+            <span>Raw: ${formatLatency(raw)}</span>
+            <span>Proc: ${formatLatency(processed)}</span>
+            <span>Pre: ${formatLatency(preprocess)}</span>
+          `;
+          currentMeta.classList.remove("hidden");
+        } else {
+          currentMeta.classList.add("hidden");
+          currentMeta.textContent = "";
+        }
+
+        const paragraphText = paragraph?.trim();
+        transcriptParagraph.textContent = paragraphText || "The live transcript will appear here once speech is detected.";
       }
 
       function ensureChart(canvas) {
@@ -559,10 +599,8 @@
           setStatusIndicator(status.capture_active);
           renderMetrics(status);
 
-          const items = transcripts.items ?? [];
-          historyBadge.textContent = `${items.length} items`;
-          renderTranscripts(items);
-          updateChart(items);
+          renderTranscripts(transcripts);
+          updateChart(transcripts.items ?? []);
 
           errorBanner.style.display = "none";
           errorBanner.textContent = "";

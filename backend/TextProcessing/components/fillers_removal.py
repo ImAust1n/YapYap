@@ -9,13 +9,13 @@ SEQ2SEQ_MODEL_NAME = "t5-small"
 
 # Fillers list (extend if needed)
 FILLERS = {
-    "umm", "uh", "uhh", "ah", "erm", "mm", "hmm",
+    "um", "umm", "uh", "uhh", "ah", "erm", "mm", "hmm",
     "like", "you know", "i mean", "sort of", "kind of",
     "right", "okay", "ok", "basically", "actually", "so", "well"
 }
 
 HESITATION_RE = re.compile(
-    r"\b(" + r"|".join(re.escape(x) for x in {"uh", "umm", "uhh", "hmm", "erm"}) + r")\b",
+    r"\b(" + r"|".join(re.escape(x) for x in {"um", "uh", "umm", "uhh", "hmm", "erm"}) + r")\b",
     flags=re.I,
 )
 

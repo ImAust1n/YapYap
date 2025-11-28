@@ -52,6 +52,9 @@ class PunctuationRestorer:
 
 def auto_format(text: str) -> str:
     text = re.sub(r"\s+([,.!?;:])", r"\1", text)
+    text = re.sub(r"(,\s*){2,}", ", ", text)
+    text = re.sub(r",\s*\.", ".", text)
+    text = re.sub(r"([.!?])\s*,", r"\1", text)
     sentences = re.split(r"([.!?])", text)
     formatted = ""
 
