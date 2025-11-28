@@ -145,6 +145,17 @@
         box-shadow: none;
       }
 
+      button.danger {
+        background: rgba(248, 113, 113, 0.18);
+        color: var(--danger);
+        box-shadow: none;
+      }
+
+      button.danger:hover,
+      button.danger:focus-visible {
+        background: rgba(248, 113, 113, 0.28);
+      }
+
       button:disabled {
         cursor: not-allowed;
         opacity: 0.5;
@@ -312,6 +323,10 @@
         white-space: pre-wrap;
       }
 
+      .hidden {
+        display: none !important;
+      }
+
       .latency-pill {
         display: inline-flex;
         align-items: center;
@@ -325,6 +340,136 @@
 
       .latency-pill.hidden {
         display: none;
+      }
+
+      .tab-nav {
+        display: inline-flex;
+        gap: 0.75rem;
+        padding: 0.35rem;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.12);
+      }
+
+      .tab-button {
+        appearance: none;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        font-weight: 500;
+        padding: 0.5rem 1.3rem;
+        border-radius: 999px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .tab-button:hover,
+      .tab-button:focus-visible {
+        color: var(--text-primary);
+        outline: none;
+        background: rgba(56, 189, 248, 0.08);
+      }
+
+      .tab-button.active {
+        background: linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(56, 189, 248, 0.32));
+        color: var(--accent);
+        box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.35);
+      }
+
+      .tab-panels {
+        display: grid;
+        gap: 1.4rem;
+      }
+
+      .tab-panel[role="tabpanel"] {
+        outline: none;
+      }
+
+      .log-table-wrapper {
+        display: grid;
+        gap: 0.75rem;
+        padding: 1.15rem 1.35rem;
+        border-radius: 16px;
+        background: rgba(15, 23, 42, 0.75);
+        border: 1px solid rgba(148, 163, 184, 0.08);
+        overflow: hidden;
+      }
+
+      .log-table-scroll {
+        overflow-x: auto;
+        max-height: 320px;
+      }
+
+      .log-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 520px;
+      }
+
+      .log-table th,
+      .log-table td {
+        padding: 0.65rem 0.9rem;
+        text-align: left;
+        font-size: 0.9rem;
+      }
+
+      .log-table th {
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+        position: sticky;
+        top: 0;
+        background: rgba(15, 23, 42, 0.92);
+        backdrop-filter: blur(12px);
+        z-index: 1;
+      }
+
+      .log-table tbody tr + tr td {
+        border-top: 1px solid rgba(148, 163, 184, 0.12);
+      }
+
+      .log-table tbody tr:hover {
+        background: rgba(56, 189, 248, 0.08);
+      }
+
+      .log-table td {
+        color: var(--text-primary);
+      }
+
+      .log-table td .mono {
+        font-family: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+        font-size: 0.85rem;
+      }
+
+      .empty-state {
+        margin: 0.5rem 0 0;
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+      }
+
+      @media (max-width: 640px) {
+        .tab-nav {
+          width: 100%;
+          justify-content: space-between;
+        }
+
+        .tab-button {
+          flex: 1;
+          text-align: center;
+          padding: 0.5rem 0.75rem;
+        }
+
+        .log-table {
+          min-width: 100%;
+        }
+
+        .log-table th,
+        .log-table td {
+          font-size: 0.85rem;
+        }
       }
 
       .chart-wrapper {
@@ -383,6 +528,7 @@
         <div class="button-group">
           <button id="start-btn" class="primary">▶ Start Capture</button>
           <button id="stop-btn" class="secondary">■ Stop Capture</button>
+          <button id="reset-btn" class="danger">↺ Reset Logs</button>
           <div class="tone-toolbar">
             <label for="tone-select">Tone</label>
             <select id="tone-select" class="tone-select">
@@ -406,17 +552,77 @@
           <h2 class="section-title">Live Transcripts</h2>
           <span class="badge" id="history-count">Fetching…</span>
         </header>
-        <div class="transcript-content">
-          <div class="transcript-box">
-            <h3>Current Sentence</h3>
-            <p id="current-utterance" class="live-text">Waiting for audio…</p>
-            <div id="current-meta" class="latency-pill hidden"></div>
+        <div class="tab-nav" role="tablist" aria-label="Transcript views">
+          <button
+            id="overview-tab"
+            class="tab-button active"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            aria-controls="overview-panel"
+            data-tab="overview"
+          >
+            Overview
+          </button>
+          <button
+            id="logs-tab"
+            class="tab-button"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="logs-panel"
+            data-tab="logs"
+            tabindex="-1"
+          >
+            Logs
+          </button>
+        </div>
+        <div class="tab-panels">
+          <div
+            id="overview-panel"
+            class="tab-panel"
+            role="tabpanel"
+            aria-labelledby="overview-tab"
+            data-tab="overview"
+          >
+            <div class="transcript-content">
+              <div class="transcript-box">
+                <h3>Current Sentence</h3>
+                <p id="current-utterance" class="live-text">Waiting for audio…</p>
+                <div id="current-meta" class="latency-pill hidden"></div>
+              </div>
+              <div class="transcript-box">
+                <h3>Transcript</h3>
+                <p id="transcript-paragraph" class="paragraph-text">
+                  The live transcript will appear here once speech is detected.
+                </p>
+              </div>
+            </div>
           </div>
-          <div class="transcript-box">
-            <h3>Transcript</h3>
-            <p id="transcript-paragraph" class="paragraph-text">
-              The live transcript will appear here once speech is detected.
-            </p>
+          <div
+            id="logs-panel"
+            class="tab-panel hidden"
+            role="tabpanel"
+            aria-labelledby="logs-tab"
+            data-tab="logs"
+          >
+            <div class="log-table-wrapper">
+              <div class="log-table-scroll">
+                <table class="log-table" id="logs-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Time</th>
+                      <th scope="col">Text</th>
+                      <th scope="col">Raw</th>
+                      <th scope="col">Processed</th>
+                      <th scope="col">Preprocess</th>
+                    </tr>
+                  </thead>
+                  <tbody id="logs-body"></tbody>
+                </table>
+              </div>
+              <p id="logs-empty" class="empty-state hidden">No transcript logs yet.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -443,8 +649,13 @@
       const errorBanner = document.getElementById("error-banner");
       const startBtn = document.getElementById("start-btn");
       const stopBtn = document.getElementById("stop-btn");
+      const resetBtn = document.getElementById("reset-btn");
       const toneSelect = document.getElementById("tone-select");
       const toneApply = document.getElementById("tone-apply");
+      const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
+      const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
+      const logsBody = document.getElementById("logs-body");
+      const logsEmpty = document.getElementById("logs-empty");
 
       const MAX_GRAPH_POINTS = 60;
       const POLL_INTERVAL_MS = 3000;
@@ -518,9 +729,9 @@
       }
 
       function renderTranscripts(data) {
-        const { paragraph = "", current = null, count = 0 } = data ?? {};
+        const { paragraph = "", current = null, count = 0, items = [] } = data ?? {};
 
-        historyBadge.textContent = `${count} entries`;
+        historyBadge.textContent = `${count} items`;
 
         const currentText = current?.text?.trim();
         if (currentText) {
@@ -547,6 +758,8 @@
 
         const paragraphText = paragraph?.trim();
         transcriptParagraph.textContent = paragraphText || "The live transcript will appear here once speech is detected.";
+
+        renderLogs(items);
       }
 
       function ensureChart(canvas) {
@@ -644,6 +857,34 @@
         chart.update("none");
       }
 
+      function renderLogs(items) {
+        if (!Array.isArray(items) || items.length === 0) {
+          logsBody.innerHTML = "";
+          logsEmpty.classList.remove("hidden");
+          return;
+        }
+
+        logsEmpty.classList.add("hidden");
+        logsBody.innerHTML = items
+          .map((item) => {
+            const formattedTime = formatDate(item.timestamp);
+            const text = (item.text || "").trim() || "(no text)";
+            const raw = formatLatency(item.raw_latency_ms);
+            const processed = formatLatency(item.processed_latency_ms);
+            const preprocess = formatLatency(item.preprocessing_total_ms);
+            return `
+              <tr>
+                <td><span class="mono">${formattedTime}</span></td>
+                <td>${text}</td>
+                <td>${raw}</td>
+                <td>${processed}</td>
+                <td>${preprocess}</td>
+              </tr>
+            `;
+          })
+          .join("");
+      }
+
       async function fetchJson(url, options) {
         const response = await fetch(url, options);
         if (!response.ok) {
@@ -662,7 +903,6 @@
 
           setStatusIndicator(status.capture_active);
           renderMetrics(status);
-
           renderTranscripts(transcripts);
           updateChart(transcripts.items ?? []);
 
@@ -695,27 +935,67 @@
         }
       }
 
-      async function sendTone() {
-        if (!toneSelect) return;
+      async function resetTranscripts() {
+        const confirmed = window.confirm(
+          "Reset all transcript history and logs? This cannot be undone."
+        );
+        if (!confirmed) return;
 
-        const toneValue = toneSelect.value;
-        toneSelect.disabled = true;
+        const originalText = resetBtn.textContent;
+        resetBtn.disabled = true;
+        resetBtn.textContent = "Resetting…";
+        try {
+          await fetchJson("/api/reset", { method: "POST" });
+          await refreshDashboard();
+        } catch (error) {
+          errorBanner.style.display = "block";
+          errorBanner.textContent = `Reset failed: ${error.message}`;
+        } finally {
+          resetBtn.disabled = false;
+          resetBtn.textContent = originalText;
+        }
+      }
+
+      function activateTab(targetId) {
+        tabButtons.forEach((button) => {
+          const isActive = button.dataset.tab === targetId;
+          button.classList.toggle("active", isActive);
+          button.setAttribute("aria-selected", String(isActive));
+          button.tabIndex = isActive ? 0 : -1;
+        });
+
+        tabPanels.forEach((panel) => {
+          const isActive = panel.dataset.tab === targetId;
+          panel.classList.toggle("hidden", !isActive);
+        });
+      }
+
+      function initTabs() {
+        tabButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            const tabId = button.dataset.tab;
+            activateTab(tabId);
+          });
+        });
+      }
+
+      async function applyToneSetting() {
+        const tone = toneSelect.value;
         toneApply.disabled = true;
         try {
           await fetchJson("/api/tone", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ tone: toneValue }),
+            body: JSON.stringify({ tone }),
           });
-          await refreshDashboard();
-          errorBanner.style.display = "none";
-          errorBanner.textContent = "";
+          toneApply.textContent = "Applied";
+          setTimeout(() => {
+            toneApply.textContent = "Apply";
+          }, 1500);
         } catch (error) {
-          console.error("Tone update failed:", error);
           errorBanner.style.display = "block";
-          errorBanner.textContent = `Failed to update tone: ${error.message}`;
+          errorBanner.textContent = `Tone update failed: ${error.message}`;
         } finally {
-          toneSelect.disabled = false;
           toneApply.disabled = false;
         }
       }
@@ -723,11 +1003,17 @@
       function initControls() {
         startBtn.addEventListener("click", () => sendControl("start"));
         stopBtn.addEventListener("click", () => sendControl("stop"));
-        toneApply.addEventListener("click", sendTone);
+        if (resetBtn) {
+          resetBtn.addEventListener("click", resetTranscripts);
+        }
+        if (toneApply) {
+          toneApply.addEventListener("click", applyToneSetting);
+        }
       }
 
       document.addEventListener("DOMContentLoaded", () => {
         initControls();
+        initTabs();
         ensureChart(document.getElementById("latency-chart"));
         refreshDashboard();
         setInterval(refreshDashboard, POLL_INTERVAL_MS);

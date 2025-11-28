@@ -238,6 +238,20 @@ def _clear_audio_queue() -> None:
             break
 
 
+def _reset_history() -> int:
+    with history_lock:
+        cleared = len(RESULT_HISTORY)
+        RESULT_HISTORY.clear()
+
+    if OUTPUT_FILE.exists():
+        try:
+            OUTPUT_FILE.unlink()
+        except OSError:
+            OUTPUT_FILE.write_text("")
+
+    return cleared
+
+
 def start_pipeline() -> None:
     global audio_thread, transcribe_thread
     if capture_active:
@@ -347,6 +361,12 @@ async def api_control(payload: ControlRequest) -> Dict[str, object]:
         raise HTTPException(status_code=400, detail="Unknown action")
 
     return get_status()
+
+
+@app.post("/api/reset")
+async def api_reset() -> Dict[str, object]:
+    cleared = _reset_history()
+    return {"cleared": cleared}
 
 
 @app.post("/api/tone")
