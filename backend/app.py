@@ -27,6 +27,7 @@ SAMPLE_RATE = 16_000
 BLOCK_DURATION = 0.5  # seconds per chunk
 MODEL_SIZE = "small"
 CHUNK_SECONDS = 6
+INACTIVITY_TIMEOUT_SECONDS = 3.0
 TONE_ALIASES = {
     "professional": "formal",
     "formal": "formal",
@@ -71,6 +72,7 @@ RESULT_HISTORY: "deque[Dict[str, object]]" = deque(maxlen=MAX_HISTORY)
 audio_thread: Optional[threading.Thread] = None
 transcribe_thread: Optional[threading.Thread] = None
 capture_active = False
+last_transcript_time: Optional[float] = None
 
 
 def _now_iso() -> str:
@@ -188,6 +190,7 @@ def _persist_results(results: list[TranscriptionResult]) -> None:
 
 
 def transcribe_audio_loop() -> None:
+    global last_transcript_time
     print("Transcription thread started.")
     audio_buffer = np.zeros((0, 1), dtype=np.float32)
 
@@ -206,6 +209,13 @@ def transcribe_audio_loop() -> None:
             audio_buffer = np.zeros((0, 1), dtype=np.float32)
 
             results = transcriber.transcribe(temp)
+            if results:
+                last_transcript_time = time.time()
+            else:
+                if last_transcript_time and (time.time() - last_transcript_time) >= INACTIVITY_TIMEOUT_SECONDS:
+                    print("No speech detected for 3 seconds — stopping pipeline.")
+                    stop_event.set()
+
             _persist_results(results)
 
 
@@ -253,12 +263,13 @@ def _reset_history() -> int:
 
 
 def start_pipeline() -> None:
-    global audio_thread, transcribe_thread
+    global audio_thread, transcribe_thread, last_transcript_time
     if capture_active:
         return
 
     stop_event.clear()
     _clear_audio_queue()
+    last_transcript_time = None
 
     audio_thread = threading.Thread(target=audio_stream_loop, daemon=True)
     transcribe_thread = threading.Thread(target=transcribe_audio_loop, daemon=True)
@@ -307,16 +318,6 @@ app.add_middleware(
 )
 
 app.mount("/frontend", StaticFiles(directory=FRONTEND_DIR), name="frontend")
-
-
-@app.on_event("startup")
-async def on_startup() -> None:
-    start_pipeline()
-
-
-@app.on_event("shutdown")
-async def on_shutdown() -> None:
-    stop_pipeline()
 
 
 @app.get("/api/status")
