@@ -13,6 +13,7 @@ import torch
 from faster_whisper import WhisperModel
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -270,6 +271,14 @@ def get_status() -> Dict[str, object]:
 # -------------------------
 app = FastAPI(title="Speech2Text Monitor", version="1.0.0")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.mount("/frontend", StaticFiles(directory=FRONTEND_DIR), name="frontend")
 
 
@@ -329,6 +338,21 @@ async def index() -> FileResponse:
     if not index_path.exists():
         raise HTTPException(status_code=404, detail="Frontend not built")
     return FileResponse(index_path)
+
+
+@app.get("/api/extension/latest")
+async def api_extension_latest() -> Dict[str, object]:
+    with history_lock:
+        latest = RESULT_HISTORY[-1] if RESULT_HISTORY else None
+
+    if not latest:
+        return {"id": None, "text": "", "timestamp": None}
+
+    return {
+        "id": latest.get("id"),
+        "text": latest.get("text", ""),
+        "timestamp": latest.get("timestamp")
+    }
 
 
 if __name__ == "__main__":
