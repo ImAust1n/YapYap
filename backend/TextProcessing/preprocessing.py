@@ -30,6 +30,9 @@ class ChunkPreprocessor:
     def __call__(self, text: str) -> Dict[str, Any]:
         return self.process(text)
 
+    def set_tone_mode(self, tone: str) -> None:
+        self.tone_mode = (tone or "neutral").lower().strip()
+
     def process(self, text: str) -> Dict[str, Any]:
         timings: Dict[str, float] = {}
 

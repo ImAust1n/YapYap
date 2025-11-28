@@ -27,6 +27,13 @@ SAMPLE_RATE = 16_000
 BLOCK_DURATION = 0.5  # seconds per chunk
 MODEL_SIZE = "small"
 CHUNK_SECONDS = 6
+TONE_ALIASES = {
+    "professional": "formal",
+    "formal": "formal",
+    "casual": "casual",
+    "neutral": "neutral",
+}
+ALLOWED_TONES = {"neutral", "formal", "casual"}
 MAX_HISTORY = 200
 
 BACKEND_DIR = Path(__file__).resolve().parent
@@ -132,6 +139,11 @@ class RealTimeTranscriber:
             )
 
         return results
+
+    def set_tone_mode(self, tone: str) -> str:
+        canonical = (tone or "neutral").lower().strip()
+        self.preprocessor.set_tone_mode(canonical)
+        return self.preprocessor.tone_mode
 
 
 transcriber = RealTimeTranscriber(model)
@@ -263,6 +275,7 @@ def get_status() -> Dict[str, object]:
         "chunk_seconds": CHUNK_SECONDS,
         "history_size": history_length,
         "latest": latest,
+        "tone_mode": transcriber.preprocessor.tone_mode,
     }
 
 
@@ -318,6 +331,10 @@ class ControlRequest(BaseModel):
     action: str
 
 
+class ToneRequest(BaseModel):
+    tone: str
+
+
 @app.post("/api/control")
 async def api_control(payload: ControlRequest) -> Dict[str, object]:
     action = (payload.action or "").lower()
@@ -330,6 +347,19 @@ async def api_control(payload: ControlRequest) -> Dict[str, object]:
         raise HTTPException(status_code=400, detail="Unknown action")
 
     return get_status()
+
+
+@app.post("/api/tone")
+async def api_tone(payload: ToneRequest) -> Dict[str, object]:
+    requested = (payload.tone or "").strip().lower()
+    canonical = TONE_ALIASES.get(requested, requested)
+
+    if canonical not in ALLOWED_TONES:
+        raise HTTPException(status_code=400, detail="Unsupported tone")
+
+    active_tone = transcriber.set_tone_mode(canonical)
+
+    return {"tone_mode": active_tone}
 
 
 @app.get("/")

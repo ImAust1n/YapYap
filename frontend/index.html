@@ -151,6 +151,43 @@
         box-shadow: none;
       }
 
+      .tone-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 12px;
+        background: rgba(148, 163, 184, 0.12);
+      }
+
+      .tone-toolbar label {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        letter-spacing: 0.04em;
+      }
+
+      .tone-select {
+        appearance: none;
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        background: rgba(15, 23, 42, 0.85);
+        color: var(--text-primary);
+        border-radius: 10px;
+        padding: 0.55rem 1.1rem;
+        font-size: 0.95rem;
+        font-family: inherit;
+      }
+
+      .tone-select:focus {
+        outline: 2px solid rgba(56, 189, 248, 0.4);
+        outline-offset: 1px;
+      }
+
+      .tone-apply {
+        padding: 0.6rem 1.1rem;
+        font-size: 0.9rem;
+        box-shadow: none;
+      }
+
       .status-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -346,6 +383,15 @@
         <div class="button-group">
           <button id="start-btn" class="primary">▶ Start Capture</button>
           <button id="stop-btn" class="secondary">■ Stop Capture</button>
+          <div class="tone-toolbar">
+            <label for="tone-select">Tone</label>
+            <select id="tone-select" class="tone-select">
+              <option value="neutral">Neutral</option>
+              <option value="formal">Professional</option>
+              <option value="casual">Casual</option>
+            </select>
+            <button id="tone-apply" class="secondary tone-apply">Apply</button>
+          </div>
         </div>
       </section>
 
@@ -397,15 +443,27 @@
       const errorBanner = document.getElementById("error-banner");
       const startBtn = document.getElementById("start-btn");
       const stopBtn = document.getElementById("stop-btn");
+      const toneSelect = document.getElementById("tone-select");
+      const toneApply = document.getElementById("tone-apply");
 
       const MAX_GRAPH_POINTS = 60;
       const POLL_INTERVAL_MS = 3000;
+      const TONE_LABELS = {
+        neutral: "Neutral",
+        formal: "Professional",
+        casual: "Casual",
+      };
 
       let latencyChart;
 
       function formatLatency(ms) {
         if (ms == null || Number.isNaN(ms)) return "–";
         return `${ms.toFixed(1)} ms`;
+      }
+
+      function formatTone(tone) {
+        const normalized = (tone || "neutral").toLowerCase();
+        return TONE_LABELS[normalized] || "Neutral";
       }
 
       function formatDate(isoString) {
@@ -432,6 +490,7 @@
           },
           { label: "Sample Rate", value: `${status.sample_rate} Hz` },
           { label: "Chunk Window", value: `${status.chunk_seconds} s` },
+          { label: "Tone Mode", value: formatTone(status.tone_mode) },
           { label: "History", value: status.history_size ?? 0 },
         ];
 
@@ -451,6 +510,11 @@
               status.latest.processed_latency_ms
             )}`
           : "Awaiting audio…";
+
+        if (toneSelect) {
+          const toneValue = (status.tone_mode || "neutral").toLowerCase();
+          toneSelect.value = TONE_LABELS[toneValue] ? toneValue : "neutral";
+        }
       }
 
       function renderTranscripts(data) {
@@ -631,9 +695,35 @@
         }
       }
 
+      async function sendTone() {
+        if (!toneSelect) return;
+
+        const toneValue = toneSelect.value;
+        toneSelect.disabled = true;
+        toneApply.disabled = true;
+        try {
+          await fetchJson("/api/tone", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tone: toneValue }),
+          });
+          await refreshDashboard();
+          errorBanner.style.display = "none";
+          errorBanner.textContent = "";
+        } catch (error) {
+          console.error("Tone update failed:", error);
+          errorBanner.style.display = "block";
+          errorBanner.textContent = `Failed to update tone: ${error.message}`;
+        } finally {
+          toneSelect.disabled = false;
+          toneApply.disabled = false;
+        }
+      }
+
       function initControls() {
         startBtn.addEventListener("click", () => sendControl("start"));
         stopBtn.addEventListener("click", () => sendControl("stop"));
+        toneApply.addEventListener("click", sendTone);
       }
 
       document.addEventListener("DOMContentLoaded", () => {
