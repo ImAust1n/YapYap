@@ -1,0 +1,119 @@
+:root {
+  --bg: #080b10cc; /* 80% opacity for glass effect */
+  --border: rgba(255, 255, 255, 0.1);
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --accent-idle: #64748b;
+  --accent-record: #fc8181;
+  --accent-process: #f6e05e;
+  --accent-done: #68d391;
+  --font-body: 'DM Sans', sans-serif;
+  --radius: 14px;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  font-family: var(--font-body);
+  color: var(--text);
+  -webkit-app-region: drag; /* allows dragging the window */
+}
+
+.widget-container {
+  width: 100%;
+  height: 100vh;
+  box-sizing: border-box;
+  background: var(--bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent-idle);
+  transition: background 0.3s ease;
+}
+
+.status-indicator.recording {
+  background: var(--accent-record);
+  box-shadow: 0 0 8px var(--accent-record);
+  animation: pulse 1.5s infinite;
+}
+
+.status-indicator.processing {
+  background: var(--accent-process);
+  box-shadow: 0 0 8px var(--accent-process);
+}
+
+.status-indicator.done {
+  background: var(--accent-done);
+  box-shadow: 0 0 8px var(--accent-done);
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.status-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.content {
+  flex: 1;
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.raw-text {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.processed-text {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #fff;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.footer {
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+}
+
+.latency {
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-family: monospace;
+}
