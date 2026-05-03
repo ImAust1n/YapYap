@@ -1,0 +1,1650 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SpeechForge — Intelligent Low-Latency Dictation Engine</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap"
+        rel="stylesheet" />
+    <style>
+        /* ─── RESET & BASE ─────────────────────────────────── */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            font-size: 16px;
+        }
+
+        :root {
+            --bg: #080b10;
+            --bg2: #0d1117;
+            --bg3: #131920;
+            --border: rgba(255, 255, 255, 0.07);
+            --border-glow: rgba(99, 179, 237, 0.25);
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --accent1: #63b3ed;
+            /* blue  */
+            --accent2: #9f7aea;
+            /* purple */
+            --accent3: #68d391;
+            /* green  */
+            --glow-blue: 0 0 28px rgba(99, 179, 237, 0.35), 0 0 60px rgba(99, 179, 237, 0.12);
+            --glow-purple: 0 0 28px rgba(159, 122, 234, 0.35), 0 0 60px rgba(159, 122, 234, 0.12);
+            --font-head: 'Syne', sans-serif;
+            --font-body: 'DM Sans', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --radius: 14px;
+            --radius-sm: 8px;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-body);
+            font-weight: 400;
+            line-height: 1.65;
+            overflow-x: hidden;
+        }
+
+        /* ─── NOISE TEXTURE OVERLAY ─────────────────────────── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+            opacity: 0.4;
+        }
+
+        /* ─── NAV ────────────────────────────────────────────── */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 5%;
+            background: rgba(8, 11, 16, 0.72);
+            backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-logo {
+            font-family: var(--font-head);
+            font-weight: 800;
+            font-size: 1.25rem;
+            background: linear-gradient(135deg, var(--accent1), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 28px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: .9rem;
+            font-weight: 500;
+            transition: color .2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text);
+        }
+
+        .nav-cta {
+            padding: 8px 20px;
+            border-radius: 50px;
+            background: linear-gradient(135deg, var(--accent1), var(--accent2));
+            color: #fff;
+            font-weight: 600;
+            font-size: .85rem;
+            text-decoration: none;
+            transition: box-shadow .25s, transform .2s;
+        }
+
+        .nav-cta:hover {
+            box-shadow: var(--glow-blue);
+            transform: translateY(-1px);
+        }
+
+        /* ─── SECTIONS ───────────────────────────────────────── */
+        section {
+            position: relative;
+            z-index: 1;
+        }
+
+        .container {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 5%;
+        }
+
+        .section-label {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: .72rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--accent1);
+            border: 1px solid rgba(99, 179, 237, 0.2);
+            padding: 4px 12px;
+            border-radius: 50px;
+            margin-bottom: 18px;
+        }
+
+        .section-title {
+            font-family: var(--font-head);
+            font-size: clamp(1.8rem, 4vw, 2.9rem);
+            font-weight: 800;
+            line-height: 1.15;
+            letter-spacing: -1px;
+            margin-bottom: 14px;
+        }
+
+        .section-subtitle {
+            color: var(--muted);
+            font-size: 1.05rem;
+            max-width: 560px;
+        }
+
+        /* ─── HERO ───────────────────────────────────────────── */
+        #hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 120px 5% 80px;
+            overflow: hidden;
+        }
+
+        .hero-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(90px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .orb1 {
+            width: 480px;
+            height: 480px;
+            background: radial-gradient(circle, rgba(99, 179, 237, 0.18) 0%, transparent 70%);
+            top: -80px;
+            left: -60px;
+            animation: orbFloat 8s ease-in-out infinite;
+        }
+
+        .orb2 {
+            width: 420px;
+            height: 420px;
+            background: radial-gradient(circle, rgba(159, 122, 234, 0.15) 0%, transparent 70%);
+            bottom: 0;
+            right: 5%;
+            animation: orbFloat 10s ease-in-out infinite reverse;
+        }
+
+        @keyframes orbFloat {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-28px);
+            }
+        }
+
+        .hero-inner {
+            position: relative;
+            z-index: 1;
+            max-width: 720px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(99, 179, 237, 0.08);
+            border: 1px solid rgba(99, 179, 237, 0.2);
+            border-radius: 50px;
+            padding: 6px 14px;
+            margin-bottom: 28px;
+            font-size: .8rem;
+            color: var(--accent1);
+            font-family: var(--font-mono);
+        }
+
+        .badge-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent3);
+            box-shadow: 0 0 6px var(--accent3);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0.4
+            }
+        }
+
+        .hero-title {
+            font-family: var(--font-head);
+            font-size: clamp(2.6rem, 6vw, 5rem);
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -2px;
+            margin-bottom: 22px;
+        }
+
+        .hero-title .grad {
+            background: linear-gradient(135deg, var(--accent1) 20%, var(--accent2) 80%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-sub {
+            font-size: 1.15rem;
+            color: var(--muted);
+            max-width: 540px;
+            margin-bottom: 40px;
+            line-height: 1.7;
+        }
+
+        .hero-btns {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        /* ─── BUTTONS ────────────────────────────────────────── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 13px 28px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: .92rem;
+            cursor: pointer;
+            text-decoration: none;
+            border: none;
+            transition: transform .2s, box-shadow .25s, background .2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent1), var(--accent2));
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            box-shadow: var(--glow-blue);
+            transform: translateY(-2px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border-glow);
+            color: var(--text);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--accent1);
+            box-shadow: var(--glow-blue);
+            transform: translateY(-2px);
+        }
+
+        .btn-ghost {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--muted);
+        }
+
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.09);
+            color: var(--text);
+        }
+
+        /* ─── HERO STATS ─────────────────────────────────────── */
+        .hero-stats {
+            display: flex;
+            gap: 32px;
+            flex-wrap: wrap;
+            margin-top: 56px;
+            padding-top: 40px;
+            border-top: 1px solid var(--border);
+        }
+
+        .stat-item {}
+
+        .stat-value {
+            font-family: var(--font-head);
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, var(--accent1), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            font-size: .82rem;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        /* ─── DEMO SECTION ───────────────────────────────────── */
+        #demo {
+            padding: 100px 5%;
+            background: var(--bg2);
+        }
+
+        .demo-header {
+            text-align: center;
+            margin-bottom: 52px;
+        }
+
+        .demo-header .section-subtitle {
+            margin: 0 auto;
+        }
+
+        /* ─── YOUTUBE EMBED ──────────────────────────────────── */
+        .yt-wrapper {
+            margin-top: 0;
+        }
+
+        .yt-chrome {
+            border-radius: var(--radius);
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: var(--bg3);
+            box-shadow: 0 32px 80px rgba(0, 0, 0, 0.5);
+            transition: box-shadow .35s;
+        }
+
+        .yt-chrome:hover {
+            box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6), var(--glow-blue);
+        }
+
+        .yt-titlebar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 18px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .yt-dots {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .yt-dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+        }
+
+        .yt-dot-r {
+            background: #fc8181;
+        }
+
+        .yt-dot-y {
+            background: #f6e05e;
+        }
+
+        .yt-dot-g {
+            background: var(--accent3);
+        }
+
+        .yt-url-bar {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-family: var(--font-mono);
+            font-size: .72rem;
+            color: var(--muted);
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .yt-lock {
+            font-size: .75rem;
+        }
+
+        .yt-actions {
+            flex-shrink: 0;
+        }
+
+        .yt-pill {
+            font-family: var(--font-mono);
+            font-size: .7rem;
+            padding: 3px 10px;
+            border-radius: 50px;
+            background: rgba(104, 211, 145, 0.1);
+            border: 1px solid rgba(104, 211, 145, 0.25);
+            color: var(--accent3);
+            animation: pulse 2s infinite;
+        }
+
+        .yt-embed-area {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%;
+            /* 16:9 */
+            background: #000;
+        }
+
+        .yt-embed-area iframe {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .yt-meta {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+            padding: 0 4px;
+        }
+
+        .yt-meta-title {
+            font-family: var(--font-head);
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .yt-meta-sub {
+            font-size: .8rem;
+            color: var(--muted);
+            font-family: var(--font-mono);
+        }
+
+        .yt-meta-stats {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+
+        .yt-stat {
+            font-size: .75rem;
+            font-family: var(--font-mono);
+            padding: 4px 12px;
+            border-radius: 50px;
+            background: rgba(99, 179, 237, 0.07);
+            border: 1px solid rgba(99, 179, 237, 0.18);
+            color: var(--accent1);
+            white-space: nowrap;
+        }
+
+        /* ─── PIPELINE ───────────────────────────────────────── */
+        #pipeline {
+            padding: 100px 5%;
+        }
+
+        .pipeline-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0;
+            margin-top: 52px;
+        }
+
+        .pipe-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+        }
+
+        .pipe-icon {
+            width: 62px;
+            height: 62px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            border: 1px solid var(--border);
+            background: var(--bg3);
+            transition: transform .25s, box-shadow .25s, border-color .25s;
+            cursor: default;
+        }
+
+        .pipe-step:hover .pipe-icon {
+            transform: translateY(-4px);
+            box-shadow: var(--glow-blue);
+            border-color: var(--accent1);
+        }
+
+        .pipe-step:nth-child(odd):hover .pipe-icon {
+            box-shadow: var(--glow-purple);
+            border-color: var(--accent2);
+        }
+
+        .pipe-name {
+            font-family: var(--font-mono);
+            font-size: .72rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+
+        .pipe-arrow {
+            font-size: 1rem;
+            color: var(--border-glow);
+            padding: 0 10px;
+            padding-bottom: 22px;
+            flex-shrink: 0;
+        }
+
+        /* ─── FEATURES ───────────────────────────────────────── */
+        #features {
+            padding: 100px 5%;
+            background: var(--bg2);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 18px;
+            margin-top: 52px;
+        }
+
+        .feature-card {
+            padding: 28px;
+            border-radius: var(--radius);
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            transition: transform .25s, border-color .25s, box-shadow .25s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent1), var(--accent2));
+            opacity: 0;
+            transition: opacity .25s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-glow);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+
+        .feature-icon {
+            font-size: 1.6rem;
+            margin-bottom: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-sm);
+            background: rgba(99, 179, 237, 0.08);
+            border: 1px solid rgba(99, 179, 237, 0.15);
+        }
+
+        .feature-name {
+            font-family: var(--font-head);
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.3px;
+        }
+
+        .feature-desc {
+            font-size: .9rem;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .feature-tag {
+            display: inline-block;
+            margin-top: 14px;
+            font-size: .72rem;
+            font-family: var(--font-mono);
+            padding: 3px 10px;
+            border-radius: 50px;
+            background: rgba(104, 211, 145, 0.08);
+            border: 1px solid rgba(104, 211, 145, 0.2);
+            color: var(--accent3);
+        }
+
+        /* ─── PERFORMANCE ────────────────────────────────────── */
+        #performance {
+            padding: 100px 5%;
+        }
+
+        .perf-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px;
+            margin-top: 52px;
+        }
+
+        .perf-card {
+            padding: 32px 28px;
+            border-radius: var(--radius);
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            text-align: center;
+            transition: transform .25s, box-shadow .25s;
+        }
+
+        .perf-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--glow-purple);
+        }
+
+        .perf-num {
+            font-family: var(--font-head);
+            font-size: 2.8rem;
+            font-weight: 800;
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, var(--accent1), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .perf-label {
+            font-size: .88rem;
+            color: var(--muted);
+            margin-top: 6px;
+        }
+
+        .bar-container {
+            margin-top: 48px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .bar-row {}
+
+        .bar-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: .82rem;
+            margin-bottom: 8px;
+            font-family: var(--font-mono);
+        }
+
+        .bar-meta .bar-label {
+            color: var(--muted);
+        }
+
+        .bar-meta .bar-val {
+            color: var(--accent1);
+        }
+
+        .bar-track {
+            height: 6px;
+            border-radius: 3px;
+            background: var(--bg3);
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, var(--accent1), var(--accent2));
+            width: 0;
+            transition: width 1.4s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        /* ─── USE CASES ──────────────────────────────────────── */
+        #usecases {
+            padding: 100px 5%;
+            background: var(--bg2);
+        }
+
+        .cases-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 18px;
+            margin-top: 52px;
+        }
+
+        .case-card {
+            padding: 32px 26px;
+            border-radius: var(--radius);
+            background: var(--bg);
+            border: 1px solid var(--border);
+            transition: transform .25s, border-color .25s, box-shadow .25s;
+            cursor: default;
+        }
+
+        .case-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(159, 122, 234, 0.3);
+            box-shadow: var(--glow-purple);
+        }
+
+        .case-emoji {
+            font-size: 2.2rem;
+            margin-bottom: 14px;
+        }
+
+        .case-title {
+            font-family: var(--font-head);
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .case-desc {
+            font-size: .88rem;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        /* ─── COMING SOON ────────────────────────────────────── */
+        #coming-soon {
+            padding: 100px 5%;
+            background: var(--bg2);
+            overflow: hidden;
+        }
+
+        .cs-inner {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 64px;
+            align-items: center;
+            margin-top: 52px;
+        }
+
+        .cs-mockup {
+            position: relative;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 0;
+            overflow: hidden;
+            box-shadow: 0 32px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--border);
+            transition: transform .4s, box-shadow .4s;
+        }
+
+        .cs-mockup:hover {
+            transform: translateY(-6px) rotateX(2deg);
+            box-shadow: 0 48px 100px rgba(0, 0, 0, 0.55), var(--glow-purple);
+        }
+
+        .cs-titlebar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.04);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .cs-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .cs-dot-r {
+            background: #fc8181;
+        }
+
+        .cs-dot-y {
+            background: #f6e05e;
+        }
+
+        .cs-dot-g {
+            background: var(--accent3);
+        }
+
+        .cs-titlebar-name {
+            flex: 1;
+            text-align: center;
+            font-family: var(--font-mono);
+            font-size: .72rem;
+            color: var(--muted);
+        }
+
+        .cs-screen {
+            padding: 24px 20px;
+            min-height: 240px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .cs-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .cs-mic-btn {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent1), var(--accent2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+            box-shadow: var(--glow-blue);
+            animation: pulseGlow 2.4s ease-in-out infinite;
+        }
+
+        @keyframes pulseGlow {
+
+            0%,
+            100% {
+                box-shadow: var(--glow-blue);
+            }
+
+            50% {
+                box-shadow: 0 0 40px rgba(99, 179, 237, 0.6), 0 0 80px rgba(99, 179, 237, 0.2);
+            }
+        }
+
+        .cs-waveform {
+            flex: 1;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .cs-bar {
+            flex: 1;
+            border-radius: 2px;
+            background: linear-gradient(to top, var(--accent1), var(--accent2));
+            opacity: 0.7;
+            animation: waveAnim 1.2s ease-in-out infinite;
+        }
+
+        .cs-bar:nth-child(2) {
+            animation-delay: .1s;
+        }
+
+        .cs-bar:nth-child(3) {
+            animation-delay: .2s;
+        }
+
+        .cs-bar:nth-child(4) {
+            animation-delay: .05s;
+        }
+
+        .cs-bar:nth-child(5) {
+            animation-delay: .15s;
+        }
+
+        .cs-bar:nth-child(6) {
+            animation-delay: .3s;
+        }
+
+        .cs-bar:nth-child(7) {
+            animation-delay: .08s;
+        }
+
+        .cs-bar:nth-child(8) {
+            animation-delay: .22s;
+        }
+
+        @keyframes waveAnim {
+
+            0%,
+            100% {
+                height: 8px;
+            }
+
+            50% {
+                height: 30px;
+            }
+        }
+
+        .cs-output-box {
+            background: var(--bg);
+            border: 1px solid rgba(104, 211, 145, 0.2);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            font-family: var(--font-mono);
+            font-size: .8rem;
+            color: var(--accent3);
+            line-height: 1.6;
+        }
+
+        .cs-status-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .cs-status-pill {
+            padding: 3px 10px;
+            border-radius: 50px;
+            font-size: .72rem;
+            font-family: var(--font-mono);
+        }
+
+        .pill-sys {
+            background: rgba(99, 179, 237, 0.1);
+            border: 1px solid rgba(99, 179, 237, 0.25);
+            color: var(--accent1);
+        }
+
+        .pill-tray {
+            background: rgba(159, 122, 234, 0.1);
+            border: 1px solid rgba(159, 122, 234, 0.25);
+            color: var(--accent2);
+        }
+
+        .pill-offline {
+            background: rgba(104, 211, 145, 0.1);
+            border: 1px solid rgba(104, 211, 145, 0.25);
+            color: var(--accent3);
+        }
+
+        .cs-content {}
+
+        .cs-feature-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-top: 28px;
+        }
+
+        .cs-feat {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 16px;
+            border-radius: var(--radius-sm);
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            transition: border-color .2s;
+        }
+
+        .cs-feat:hover {
+            border-color: var(--border-glow);
+        }
+
+        .cs-feat-icon {
+            font-size: 1.2rem;
+            width: 36px;
+            height: 36px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(99, 179, 237, 0.08);
+            border-radius: var(--radius-sm);
+        }
+
+        .cs-feat-title {
+            font-family: var(--font-head);
+            font-size: .95rem;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+
+        .cs-feat-desc {
+            font-size: .82rem;
+            color: var(--muted);
+        }
+
+        .cs-notify {
+            margin-top: 28px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .notify-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 11px 16px;
+            border-radius: 50px;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: var(--font-body);
+            font-size: .9rem;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+        }
+
+        .notify-input:focus {
+            border-color: var(--accent1);
+            box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.1);
+        }
+
+        .notify-input::placeholder {
+            color: var(--muted);
+        }
+
+        .notify-btn {
+            padding: 11px 22px;
+            border-radius: 50px;
+            background: linear-gradient(135deg, var(--accent1), var(--accent2));
+            color: #fff;
+            font-weight: 600;
+            font-size: .88rem;
+            border: none;
+            cursor: pointer;
+            transition: box-shadow .25s, transform .2s;
+            white-space: nowrap;
+        }
+
+        .notify-btn:hover {
+            box-shadow: var(--glow-blue);
+            transform: translateY(-1px);
+        }
+
+        .notify-success {
+            display: none;
+            font-family: var(--font-mono);
+            font-size: .82rem;
+            color: var(--accent3);
+            margin-top: 8px;
+        }
+
+        @media (max-width: 820px) {
+            .cs-inner {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ─── FOOTER ─────────────────────────────────────────── */
+        footer {
+            padding: 48px 5%;
+            background: var(--bg);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 18px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .footer-logo {
+            font-family: var(--font-head);
+            font-weight: 800;
+            font-size: 1.1rem;
+            background: linear-gradient(135deg, var(--accent1), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 24px;
+            list-style: none;
+        }
+
+        .footer-links a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: .85rem;
+            transition: color .2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--text);
+        }
+
+        .footer-credit {
+            font-size: .82rem;
+            color: var(--muted);
+            font-family: var(--font-mono);
+        }
+
+        /* ─── SCROLL ANIMATIONS ──────────────────────────────── */
+        .reveal {
+            opacity: 0;
+            transform: translateY(28px);
+            transition: opacity .65s ease, transform .65s ease;
+        }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: none;
+        }
+
+        /* ─── RESPONSIVE ─────────────────────────────────────── */
+        @media (max-width: 820px) {
+            .pipeline-wrap {
+                gap: 4px;
+            }
+
+            nav .nav-links {
+                display: none;
+            }
+
+            .hero-stats {
+                gap: 22px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- NAV -->
+    <nav>
+        <span class="nav-logo">SpeechForge</span>
+        <ul class="nav-links">
+            <li><a href="#demo">Demo</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#pipeline">Pipeline</a></li>
+            <li><a href="#performance">Performance</a></li>
+            <li><a href="#usecases">Use Cases</a></li>
+            <li><a href="#coming-soon">Desktop App</a></li>
+        </ul>
+        <a href="#demo" class="nav-cta">Watch Demo</a>
+    </nav>
+
+    <!-- HERO -->
+    <section id="hero">
+        <div class="hero-orb orb1"></div>
+        <div class="hero-orb orb2"></div>
+        <div class="hero-inner">
+            <div class="hero-badge"><span class="badge-dot"></span> v1.0 · Fully Local · No Cloud</div>
+            <h1 class="hero-title">
+                Intelligent<br />
+                <span class="grad">Low-Latency</span><br />
+                Dictation Engine
+            </h1>
+            <p class="hero-sub">
+                Real-time speech to clean, structured text in <strong>under 1500 ms</strong> —
+                zero cloud, zero LLMs, zero compromise on privacy.
+            </p>
+            <div class="hero-btns">
+                <a href="#demo" class="btn btn-primary">▶ Watch Demo</a>
+                <a href="#coming-soon" class="btn btn-outline">🖥 Desktop App — Coming Soon</a>
+                <a href="#" class="btn btn-ghost">GitHub ↗</a>
+            </div>
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <div class="stat-value" data-count="1500" data-suffix="ms">&lt;1500ms</div>
+                    <div class="stat-label">End-to-end latency</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">100%</div>
+                    <div class="stat-label">Local execution</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">0</div>
+                    <div class="stat-label">LLMs used</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">4</div>
+                    <div class="stat-label">Tone modes</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- LIVE DEMO -->
+    <section id="demo">
+        <div class="container">
+            <div class="demo-header">
+                <span class="section-label">Live Demo</span>
+                <h2 class="section-title">See the engine in action</h2>
+                <p class="section-subtitle">Watch a pre-recorded walkthrough of the full pipeline — raw messy speech
+                    going in, clean structured text coming out in real time.</p>
+            </div>
+
+            <div class="yt-wrapper reveal">
+                <div class="yt-chrome">
+                    <div class="yt-titlebar">
+                        <div class="yt-dots">
+                            <span class="yt-dot yt-dot-r"></span>
+                            <span class="yt-dot yt-dot-y"></span>
+                            <span class="yt-dot yt-dot-g"></span>
+                        </div>
+                        <div class="yt-url-bar">
+                            <span class="yt-lock">🔒</span>
+                            <span>youtube.com — SpeechForge Live Demo</span>
+                        </div>
+                        <div class="yt-actions">
+                            <span class="yt-pill">▶ Playing</span>
+                        </div>
+                    </div>
+                    <div class="yt-embed-area">
+                        <iframe id="demoFrame"
+                            src="https://www.youtube.com/embed/dQw4w9WgXcQ?rel=0&modestbranding=1&color=white"
+                            title="SpeechForge — Project Demo" frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowfullscreen></iframe>
+                    </div>
+                </div>
+                <div class="yt-meta">
+                    <div class="yt-meta-left">
+                        <div class="yt-meta-title">SpeechForge — Intelligent Low-Latency Dictation Engine · Full Demo
+                        </div>
+                        <div class="yt-meta-sub">Replace the src URL above with your actual YouTube video link</div>
+                    </div>
+                    <div class="yt-meta-stats">
+                        <span class="yt-stat">⚡ &lt;1500ms latency</span>
+                        <span class="yt-stat">🔒 100% local</span>
+                        <span class="yt-stat">🎙 Live pipeline</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PIPELINE -->
+    <section id="pipeline">
+        <div class="container">
+            <span class="section-label">Architecture</span>
+            <h2 class="section-title">Eight-stage NLP pipeline</h2>
+            <p class="section-subtitle">Every spoken word passes through a deterministic transformation chain — no
+                neural nets required.</p>
+
+            <div class="pipeline-wrap reveal" id="pipelineWrap">
+                <!-- steps injected by JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features">
+        <div class="container">
+            <span class="section-label">Capabilities</span>
+            <h2 class="section-title">What the engine does</h2>
+            <p class="section-subtitle">Six tightly-coupled modules that work together to turn raw dictation into
+                production-ready text.</p>
+
+            <div class="features-grid">
+                <div class="feature-card reveal">
+                    <div class="feature-icon">🎙</div>
+                    <div class="feature-name">Speech-to-Text</div>
+                    <div class="feature-desc">Integrates with local Whisper or Vosk STT engines. Raw transcription is
+                        piped directly into the cleaning pipeline without any cloud round-trip.</div>
+                    <span class="feature-tag">Local STT</span>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-icon">🧹</div>
+                    <div class="feature-name">Filler Removal</div>
+                    <div class="feature-desc">Automatically detects and removes filler words like "um", "uh", "like",
+                        "you know", "basically", and locale-specific fillers such as "matlab".</div>
+                    <span class="feature-tag">Rule-based NLP</span>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-icon">🔄</div>
+                    <div class="feature-name">Repetition Detection</div>
+                    <div class="feature-desc">Uses a sliding window algorithm to detect consecutive repeated words and
+                        phrases, collapsing them into a single occurrence seamlessly.</div>
+                    <span class="feature-tag">N-gram Matching</span>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-icon">✏️</div>
+                    <div class="feature-name">Grammar Correction</div>
+                    <div class="feature-desc">Applies deterministic grammar rules — capitalization, punctuation
+                        inference, subject-verb agreement — without any LLMs or external APIs.</div>
+                    <span class="feature-tag">Zero LLM</span>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-icon">📄</div>
+                    <div class="feature-name">Auto Formatting</div>
+                    <div class="feature-desc">Groups clauses into coherent sentences and paragraphs. Infers sentence
+                        boundaries from pause durations and syntactic signals.</div>
+                    <span class="feature-tag">Sentence Segmentation</span>
+                </div>
+                <div class="feature-card reveal">
+                    <div class="feature-icon">🎨</div>
+                    <div class="feature-name">Tone Control</div>
+                    <div class="feature-desc">Switch between Formal, Casual, Concise, and Neutral modes. Each mode
+                        applies a post-processing pass that adjusts vocabulary and sentence structure.</div>
+                    <span class="feature-tag">4 Modes</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PERFORMANCE -->
+    <section id="performance">
+        <div class="container">
+            <span class="section-label">Performance</span>
+            <h2 class="section-title">Built for speed</h2>
+            <p class="section-subtitle">Every component is optimized for sub-1500ms end-to-end latency on commodity
+                hardware.</p>
+
+            <div class="perf-grid reveal">
+                <div class="perf-card">
+                    <div class="perf-num">&lt;1500ms</div>
+                    <div class="perf-label">Total pipeline latency</div>
+                </div>
+                <div class="perf-card">
+                    <div class="perf-num">~120ms</div>
+                    <div class="perf-label">NLP processing time</div>
+                </div>
+                <div class="perf-card">
+                    <div class="perf-num">100%</div>
+                    <div class="perf-label">Local — zero network</div>
+                </div>
+                <div class="perf-card">
+                    <div class="perf-num">0</div>
+                    <div class="perf-label">Manual edits needed</div>
+                </div>
+            </div>
+
+            <div class="bar-container reveal" style="margin-top:52px">
+                <div class="bar-row">
+                    <div class="bar-meta"><span class="bar-label">STT Engine</span><span class="bar-val">~900ms</span>
+                    </div>
+                    <div class="bar-track">
+                        <div class="bar-fill" data-width="60"></div>
+                    </div>
+                </div>
+                <div class="bar-row">
+                    <div class="bar-meta"><span class="bar-label">Filler + Repetition Removal</span><span
+                            class="bar-val">~45ms</span></div>
+                    <div class="bar-track">
+                        <div class="bar-fill" data-width="3"></div>
+                    </div>
+                </div>
+                <div class="bar-row">
+                    <div class="bar-meta"><span class="bar-label">Grammar Correction</span><span
+                            class="bar-val">~40ms</span></div>
+                    <div class="bar-track">
+                        <div class="bar-fill" data-width="2.7"></div>
+                    </div>
+                </div>
+                <div class="bar-row">
+                    <div class="bar-meta"><span class="bar-label">Formatting + Tone Pass</span><span
+                            class="bar-val">~35ms</span></div>
+                    <div class="bar-track">
+                        <div class="bar-fill" data-width="2.3"></div>
+                    </div>
+                </div>
+                <div class="bar-row">
+                    <div class="bar-meta"><span class="bar-label">Total Pipeline</span><span
+                            class="bar-val">&lt;1500ms</span></div>
+                    <div class="bar-track">
+                        <div class="bar-fill" data-width="100"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- USE CASES -->
+    <section id="usecases">
+        <div class="container">
+            <span class="section-label">Use Cases</span>
+            <h2 class="section-title">Who benefits most</h2>
+            <p class="section-subtitle">Anywhere humans speak and need clean structured text — SpeechForge fits in.</p>
+
+            <div class="cases-grid">
+                <div class="case-card reveal">
+                    <div class="case-emoji">🎓</div>
+                    <div class="case-title">Students</div>
+                    <div class="case-desc">Dictate lecture notes, get formatted study material in seconds. Never lose an
+                        idea to bad handwriting again.</div>
+                </div>
+                <div class="case-card reveal">
+                    <div class="case-emoji">💼</div>
+                    <div class="case-title">Professionals</div>
+                    <div class="case-desc">Draft polished emails, memos, and reports by speaking naturally. The engine
+                        handles grammar so you don't have to.</div>
+                </div>
+                <div class="case-card reveal">
+                    <div class="case-emoji">🤝</div>
+                    <div class="case-title">Meetings</div>
+                    <div class="case-desc">Transcribe live discussions into clean action items and summaries. No more
+                        messy raw transcripts to edit afterward.</div>
+                </div>
+                <div class="case-card reveal">
+                    <div class="case-emoji">✍️</div>
+                    <div class="case-title">Content Creators</div>
+                    <div class="case-desc">Turn spoken ideas into blog drafts, scripts, and outlines instantly. Keep
+                        your creative flow without stopping to type.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- COMING SOON -->
+    <section id="coming-soon">
+        <div class="container">
+            <span class="section-label">Coming Soon</span>
+            <h2 class="section-title">A native desktop app<br /><span
+                    style="background:linear-gradient(135deg,var(--accent1),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">for
+                    every platform</span></h2>
+            <p class="section-subtitle">The full SpeechForge engine — packaged into a lightweight desktop application.
+                One shortcut, anywhere on your system.</p>
+
+            <div class="cs-inner">
+                <!-- MOCK APP WINDOW -->
+                <div class="cs-mockup reveal">
+                    <div class="cs-titlebar">
+                        <span class="cs-dot cs-dot-r"></span>
+                        <span class="cs-dot cs-dot-y"></span>
+                        <span class="cs-dot cs-dot-g"></span>
+                        <span class="cs-titlebar-name">SpeechForge Desktop — v2.0</span>
+                    </div>
+                    <div class="cs-screen">
+                        <div class="cs-row">
+                            <div class="cs-mic-btn">🎙</div>
+                            <div class="cs-waveform">
+                                <div class="cs-bar" style="height:18px"></div>
+                                <div class="cs-bar" style="height:28px"></div>
+                                <div class="cs-bar" style="height:12px"></div>
+                                <div class="cs-bar" style="height:32px"></div>
+                                <div class="cs-bar" style="height:20px"></div>
+                                <div class="cs-bar" style="height:26px"></div>
+                                <div class="cs-bar" style="height:10px"></div>
+                                <div class="cs-bar" style="height:30px"></div>
+                            </div>
+                        </div>
+                        <div class="cs-output-box">
+                            The quarterly results exceeded expectations significantly. We should continue this approach
+                            and schedule a follow-up review next week.
+                        </div>
+                        <div class="cs-status-row">
+                            <span class="cs-status-pill pill-sys">⌨ Global Hotkey: ⌥Space</span>
+                            <span class="cs-status-pill pill-tray">System Tray</span>
+                            <span class="cs-status-pill pill-offline">● Fully Offline</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FEATURES + NOTIFY -->
+                <div class="cs-content reveal">
+                    <div class="cs-feature-list">
+                        <div class="cs-feat">
+                            <div class="cs-feat-icon">⌨</div>
+                            <div>
+                                <div class="cs-feat-title">Global Hotkey</div>
+                                <div class="cs-feat-desc">Trigger dictation from any application — browser, IDE, Slack,
+                                    Notion — with a single keyboard shortcut.</div>
+                            </div>
+                        </div>
+                        <div class="cs-feat">
+                            <div class="cs-feat-icon">📥</div>
+                            <div>
+                                <div class="cs-feat-title">Auto-paste to Cursor</div>
+                                <div class="cs-feat-desc">Processed text is instantly pasted wherever your cursor is. No
+                                    copy-paste, no context switching.</div>
+                            </div>
+                        </div>
+                        <div class="cs-feat">
+                            <div class="cs-feat-icon">🖥</div>
+                            <div>
+                                <div class="cs-feat-title">Windows · macOS · Linux</div>
+                                <div class="cs-feat-desc">One codebase, three platforms. Built with Tauri for a tiny
+                                    binary footprint and native performance.</div>
+                            </div>
+                        </div>
+                        <div class="cs-feat">
+                            <div class="cs-feat-icon">🔒</div>
+                            <div>
+                                <div class="cs-feat-title">Air-gapped & Private</div>
+                                <div class="cs-feat-desc">Zero telemetry. Zero cloud. Your voice data never leaves your
+                                    machine — not a single byte.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cs-notify">
+                        <input type="email" class="notify-input" id="notifyEmail"
+                            placeholder="your@email.com — get notified at launch" />
+                        <button class="notify-btn" onclick="handleNotify()">Notify Me</button>
+                    </div>
+                    <div class="notify-success" id="notifySuccess">✓ You're on the list! We'll email you when it
+                        launches.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <span class="footer-logo">SpeechForge</span>
+        <ul class="footer-links">
+            <li><a href="#">GitHub ↗</a></li>
+            <li><a href="#demo">Demo</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#coming-soon">Desktop App</a></li>
+        </ul>
+        <span class="footer-credit">Built with ♥ — Intelligent Dictation Engine v1.0</span>
+    </footer>
+
+    <script>
+        /* ─── PIPELINE STEPS ───────────────────────────── */
+        const steps = [
+            { icon: '🎙', name: 'Speech' },
+            { icon: '📝', name: 'STT' },
+            { icon: '🧹', name: 'Filler\nRemoval' },
+            { icon: '🔄', name: 'Repetition\nDetect' },
+            { icon: '✏️', name: 'Grammar\nFix' },
+            { icon: '📄', name: 'Format' },
+            { icon: '🎨', name: 'Tone' },
+            { icon: '✅', name: 'Output' },
+        ];
+        const pw = document.getElementById('pipelineWrap');
+        steps.forEach((s, i) => {
+            const step = document.createElement('div');
+            step.className = 'pipe-step';
+            step.innerHTML = `<div class="pipe-icon">${s.icon}</div><div class="pipe-name">${s.name.replace('\n', '<br>')}</div>`;
+            pw.appendChild(step);
+            if (i < steps.length - 1) {
+                const arr = document.createElement('div');
+                arr.className = 'pipe-arrow';
+                arr.textContent = '→';
+                pw.appendChild(arr);
+            }
+        });
+
+        /* ─── NOTIFY ME ─────────────────────────────────── */
+        function handleNotify() {
+            const input = document.getElementById('notifyEmail');
+            const success = document.getElementById('notifySuccess');
+            const val = input.value.trim();
+            if (!val || !val.includes('@')) {
+                input.style.borderColor = '#fc8181';
+                input.style.boxShadow = '0 0 0 3px rgba(252,129,129,0.12)';
+                setTimeout(() => {
+                    input.style.borderColor = '';
+                    input.style.boxShadow = '';
+                }, 1800);
+                return;
+            }
+            input.style.display = 'none';
+            document.querySelector('.notify-btn').style.display = 'none';
+            success.style.display = 'block';
+        }
+
+        /* ─── SCROLL REVEAL ─────────────────────────────── */
+        const revealEls = document.querySelectorAll('.reveal');
+        const revealObs = new IntersectionObserver((entries) => {
+            entries.forEach((e, i) => {
+                if (e.isIntersecting) {
+                    setTimeout(() => e.target.classList.add('visible'), i * 60);
+                    revealObs.unobserve(e.target);
+                }
+            });
+        }, { threshold: 0.08 });
+        revealEls.forEach(el => revealObs.observe(el));
+
+        /* ─── PERFORMANCE BARS ──────────────────────────── */
+        const barObs = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting) {
+                    e.target.querySelectorAll('.bar-fill').forEach(bar => {
+                        bar.style.width = bar.dataset.width + '%';
+                    });
+                    barObs.unobserve(e.target);
+                }
+            });
+        }, { threshold: 0.2 });
+        document.querySelectorAll('.bar-container').forEach(bc => barObs.observe(bc));
+
+        /* ─── NOTIFY ON ENTER KEY ───────────────────────── */
+        document.getElementById('notifyEmail').addEventListener('keydown', e => {
+            if (e.key === 'Enter') handleNotify();
+        });
+    </script>
+</body>
+
+</html>
