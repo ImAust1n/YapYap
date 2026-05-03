@@ -1,5 +1,29 @@
 const BACKEND_URL = "http://localhost:5000/api/extension/latest";
+const STATUS_URL = "http://localhost:5000/api/status";
+const CONTROL_URL = "http://localhost:5000/api/control";
 const POLL_INTERVAL_MS = 2000;
+
+async function ensureBackendRunning() {
+  try {
+    const statusResp = await fetch(STATUS_URL, { cache: "no-store" });
+    if (statusResp.ok) {
+      const status = await statusResp.json();
+      if (status.capture_active) {
+        return true;
+      }
+    }
+
+    const resp = await fetch(CONTROL_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "start" }),
+    });
+    return resp.ok;
+  } catch (err) {
+    console.warn("Failed to ensure backend running", err);
+    return false;
+  }
+}
 
 let polling = false;
 let pollTimeout = null;
@@ -40,10 +64,17 @@ async function pollBackend() {
   }
 }
 
-function startPolling() {
+async function startPolling() {
   if (polling) {
     return;
   }
+
+  const ready = await ensureBackendRunning();
+  if (!ready) {
+    broadcast({ error: "Unable to connect to YapYap backend" });
+    return;
+  }
+
   polling = true;
   lastTranscriptId = null;
   broadcast({ status: "listening" });
