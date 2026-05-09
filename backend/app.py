@@ -60,7 +60,9 @@ print("Loading Whisper model... (this may take a few seconds)")
 # -------------------------
 # GLOBAL STATE
 # -------------------------
-model = WhisperModel(MODEL_SIZE, device=DEVICE, compute_type=COMPUTE_TYPE)
+MODELS_DIR = BASE_DIR / "models"
+MODELS_DIR.mkdir(exist_ok=True)
+model = WhisperModel(MODEL_SIZE, device=DEVICE, compute_type=COMPUTE_TYPE, download_root=str(MODELS_DIR))
 transcriber = None  # initialized after class definitions
 
 audio_queue: "queue.Queue[np.ndarray]" = queue.Queue()
