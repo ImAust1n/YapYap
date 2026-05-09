@@ -1171,7 +1171,17 @@
         /* ─── RESPONSIVE ─────────────────────────────────────── */
         @media (max-width: 820px) {
             .pipeline-wrap {
-                gap: 4px;
+                gap: 12px;
+                flex-direction: column;
+            }
+
+            .pipe-arrow {
+                transform: rotate(90deg);
+                padding: 10px 0;
+            }
+
+            nav {
+                padding: 12px 5%;
             }
 
             nav .nav-links {
@@ -1180,6 +1190,39 @@
 
             .hero-stats {
                 gap: 22px;
+                justify-content: center;
+            }
+
+            .hero-inner {
+                text-align: center;
+            }
+
+            .hero-sub {
+                margin: 0 auto 40px;
+            }
+
+            .hero-btns {
+                justify-content: center;
+            }
+
+            .cs-inner {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+
+            .section-title {
+                font-size: 2.2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero-title {
+                font-size: 2.8rem;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
             }
         }
     </style>
@@ -1218,8 +1261,9 @@
             </p>
             <div class="hero-btns">
                 <a href="#demo" class="btn btn-primary">▶ Watch Demo</a>
-                <a href="#coming-soon" class="btn btn-outline">🖥 Desktop App — Coming Soon</a>
-                <a href="#" class="btn btn-ghost">GitHub ↗</a>
+                <a href="https://github.com/ImAust1n/YapYap/releases" class="btn btn-outline">🖥 Download Windows
+                    App</a>
+                <a href="https://github.com/ImAust1n/YapYap" class="btn btn-ghost">GitHub ↗</a>
             </div>
             <div class="hero-stats">
                 <div class="stat-item">
@@ -1252,7 +1296,7 @@
                     going in, clean structured text coming out in real time.</p>
             </div>
 
-            <div class="yt-wrapper reveal">
+            <div class="yt-wrapper">
                 <div class="yt-chrome">
                     <div class="yt-titlebar">
                         <div class="yt-dots">
@@ -1279,7 +1323,8 @@
                     <div class="yt-meta-left">
                         <div class="yt-meta-title">SpeechForge — Intelligent Low-Latency Dictation Engine · Full Demo
                         </div>
-                        <div class="yt-meta-sub">Replace the src URL above with your actual YouTube video link</div>
+                        <div class="yt-meta-sub">Demonstrating real-time incremental transcription and grammar
+                            correction.</div>
                     </div>
                     <div class="yt-meta-stats">
                         <span class="yt-stat">⚡ &lt;1500ms latency</span>
@@ -1463,15 +1508,16 @@
         </div>
     </section>
 
-    <!-- COMING SOON -->
+    <!-- DESKTOP APP -->
     <section id="coming-soon">
         <div class="container">
-            <span class="section-label">Coming Soon</span>
-            <h2 class="section-title">A native desktop app<br /><span
-                    style="background:linear-gradient(135deg,var(--accent1),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">for
-                    every platform</span></h2>
-            <p class="section-subtitle">The full SpeechForge engine — packaged into a lightweight desktop application.
-                One shortcut, anywhere on your system.</p>
+            <span class="section-label">Now Available</span>
+            <h2 class="section-title">The SpeechForge Desktop App<br /><span
+                    style="background:linear-gradient(135deg,var(--accent1),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Zero
+                    config, total power</span></h2>
+            <p class="section-subtitle">The full SpeechForge engine — packaged into a high-performance Electron
+                application.
+                One shortcut (Ctrl+Shift+D), works globally across your entire OS.</p>
 
             <div class="cs-inner">
                 <!-- MOCK APP WINDOW -->
@@ -1512,11 +1558,11 @@
                 <div class="cs-content reveal">
                     <div class="cs-feature-list">
                         <div class="cs-feat">
-                            <div class="cs-feat-icon">⌨</div>
+                            <div class="cs-feat-icon">⚡</div>
                             <div>
-                                <div class="cs-feat-title">Global Hotkey</div>
-                                <div class="cs-feat-desc">Trigger dictation from any application — browser, IDE, Slack,
-                                    Notion — with a single keyboard shortcut.</div>
+                                <div class="cs-feat-title">Incremental Live Pasting</div>
+                                <div class="cs-feat-desc">Watch text appear at your cursor in real-time as you speak. No
+                                    more waiting for the session to end to see your results.</div>
                             </div>
                         </div>
                         <div class="cs-feat">
@@ -1572,14 +1618,14 @@
     <script>
         /* ─── PIPELINE STEPS ───────────────────────────── */
         const steps = [
-            { icon: '🎙', name: 'Speech' },
-            { icon: '📝', name: 'STT' },
-            { icon: '🧹', name: 'Filler\nRemoval' },
-            { icon: '🔄', name: 'Repetition\nDetect' },
-            { icon: '✏️', name: 'Grammar\nFix' },
-            { icon: '📄', name: 'Format' },
+            { icon: '🎙', name: 'Capture' },
+            { icon: '📝', name: 'Whisper' },
+            { icon: '🧹', name: 'Fillers' },
+            { icon: '🔄', name: 'Repetition' },
+            { icon: '✏️', name: 'Grammar' },
             { icon: '🎨', name: 'Tone' },
-            { icon: '✅', name: 'Output' },
+            { icon: '📄', name: 'Format' },
+            { icon: '✅', name: 'Paste' },
         ];
         const pw = document.getElementById('pipelineWrap');
         steps.forEach((s, i) => {
