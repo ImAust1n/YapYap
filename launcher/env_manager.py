@@ -14,8 +14,13 @@ def setup_environment(base_dir: Path) -> Path:
     
     if not venv_dir.exists() or not python_exe.exists():
         print("Creating virtual environment...")
-        builder = venv.EnvBuilder(with_pip=True, clear=True)
-        builder.create(venv_dir)
+        import shutil
+        system_python = shutil.which("python") or shutil.which("python3")
+        if not system_python:
+            raise RuntimeError("Python is not installed or not in PATH. Please install Python 3.10+.")
+        
+        creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+        subprocess.check_call([system_python, "-m", "venv", str(venv_dir)], creationflags=creationflags)
         print("Virtual environment created.")
     
     # Check dependencies

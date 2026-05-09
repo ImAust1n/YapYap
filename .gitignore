@@ -15,6 +15,7 @@ node_modules/
 *.env
 
 final_transcript.txt
+models/
 
 # Distribution / packaging
 .Python

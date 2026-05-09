@@ -51,7 +51,9 @@ app.whenReady().then(() => {
     lastTrigger = now;
     
     if (!mainWindow.isVisible()) {
-      mainWindow.show();
+      // showInactive() reveals the overlay WITHOUT stealing focus from the
+      // current text field the user was typing in.
+      mainWindow.showInactive();
     }
     // Send trigger to renderer
     mainWindow.webContents.send('shortcut-trigger');
@@ -66,26 +68,32 @@ app.whenReady().then(() => {
   });
 });
 
-ipcMain.on('transcription-complete', (event, text) => {
-  if (text) {
-    clipboard.writeText(text);
-    
-    // Auto paste via powershell
+// Incremental paste: renderer sends one chunk at a time as speech is recognized.
+// Because the overlay was shown with showInactive(), the original text field
+// retains focus and receives the paste directly.
+function doPaste(text) {
+  if (!text) return;
+  clipboard.writeText(text);
+  setTimeout(() => {
     const script = `
       $wshell = New-Object -ComObject wscript.shell;
       $wshell.SendKeys('^v')
     `;
     const ps = spawn('powershell.exe', ['-NoProfile', '-Command', script]);
-    ps.on('error', (err) => {
-      console.error('Failed to auto-paste:', err);
-    });
-  }
-  
-  // Hide window after a brief delay
-  setTimeout(() => {
-    mainWindow.hide();
-  }, 4000);
+    ps.on('error', (err) => console.error('Paste failed:', err));
+  }, 100); // small delay for clipboard write to propagate
+}
+
+ipcMain.on('paste-text', (event, text) => {
+  doPaste(text);
 });
+
+ipcMain.on('transcription-complete', (event, _text) => {
+  // All pasting is now done incrementally via 'paste-text' during recording.
+  // Just hide the overlay after a brief pause so the user sees the final text.
+  setTimeout(() => mainWindow.hide(), 1200);
+});
+
 
 // App lifecycle
 app.on('window-all-closed', () => {

@@ -1,3 +1,9 @@
+import os
+# Set BEFORE any transformers import. This prevents the auto_conversion
+# background thread from hitting HuggingFace's discussions API, which returns
+# 403 for repos with discussions disabled (e.g. grammar_error_correcter_v1).
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
 import queue
 import threading
 import time
@@ -8,8 +14,10 @@ from pathlib import Path
 from typing import Callable, Dict, Optional
 
 import numpy as np
+# pyrefly: ignore [missing-import]
 import sounddevice as sd
 import torch
+# pyrefly: ignore [missing-import]
 from faster_whisper import WhisperModel
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -213,12 +221,27 @@ def transcribe_audio_loop() -> None:
             results = transcriber.transcribe(temp)
             if results:
                 last_transcript_time = time.time()
-            else:
-                if last_transcript_time and (time.time() - last_transcript_time) >= INACTIVITY_TIMEOUT_SECONDS:
-                    print("No speech detected for 3 seconds — stopping pipeline.")
-                    stop_event.set()
 
             _persist_results(results)
+
+    # --- Flush tail audio ---
+    # Drain anything still sitting in the queue after stop was signalled.
+    while not audio_queue.empty():
+        try:
+            chunk = audio_queue.get_nowait()
+            audio_buffer = np.concatenate((audio_buffer, chunk))
+        except queue.Empty:
+            break
+
+    # Transcribe the remaining buffer if it has at least 0.5 s of audio.
+    MIN_FLUSH_SAMPLES = int(SAMPLE_RATE * 0.5)
+    if len(audio_buffer) >= MIN_FLUSH_SAMPLES:
+        print(f"Flushing {len(audio_buffer) / SAMPLE_RATE:.1f}s of tail audio...")
+        temp = audio_buffer.flatten().astype(np.float32)
+        results = transcriber.transcribe(temp)
+        _persist_results(results)
+        print("Tail audio flush complete.")
+    # ------------------------
 
 
 def audio_stream_loop() -> None:
@@ -281,12 +304,18 @@ def start_pipeline() -> None:
 
 
 def stop_pipeline() -> None:
+    # Signal threads to stop. Do NOT clear the audio queue here —
+    # the transcription thread needs to drain and flush remaining audio first.
     stop_event.set()
-    _clear_audio_queue()
 
+    # Wait for threads to finish (transcription may take a few extra seconds
+    # to flush the tail audio through Whisper).
     for worker in (audio_thread, transcribe_thread):
         if worker and worker.is_alive():
-            worker.join(timeout=2)
+            worker.join(timeout=15)
+
+    # Only now safe to clear any leftover queue items.
+    _clear_audio_queue()
 
 
 def get_status() -> Dict[str, object]:
@@ -320,6 +349,13 @@ app.add_middleware(
 )
 
 app.mount("/frontend", StaticFiles(directory=FRONTEND_DIR), name="frontend")
+
+
+@app.on_event("startup")
+async def on_startup():
+    """Clear stale transcripts from a previous session on every fresh start."""
+    _reset_history()
+    print("Session history cleared. Ready.")
 
 
 @app.get("/api/status")
@@ -409,6 +445,18 @@ async def api_extension_latest() -> Dict[str, object]:
 
 
 if __name__ == "__main__":
+    import time
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=5000, reload=False)
+    # Retry loop: if the previous process left port 5000 in TIME_WAIT, wait
+    # a few seconds and try again rather than crashing immediately.
+    for _attempt in range(10):
+        try:
+            uvicorn.run(app, host="127.0.0.1", port=5000, reload=False)
+            break
+        except OSError as _exc:
+            if _exc.errno in (10048, 98) and _attempt < 9:  # Address already in use
+                print(f"Port 5000 busy (attempt {_attempt + 1}/10), retrying in 3s...")
+                time.sleep(3)
+            else:
+                raise
