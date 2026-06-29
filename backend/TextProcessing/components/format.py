@@ -2,6 +2,7 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
+# pyrefly: ignore [missing-import]
 from transformers import AutoModelForTokenClassification, AutoTokenizer, pipeline
 
 
@@ -86,6 +87,10 @@ class TextFormatter:
 
 PUNCTUATION_RESTORER = PunctuationRestorer()
 TEXT_FORMATTER = TextFormatter(PUNCTUATION_RESTORER)
+
+print(f"Loading Punctuation model ({MODEL_NAME})...", flush=True)
+PUNCTUATION_RESTORER._load()
+print("Punctuation model loaded successfully.", flush=True)
 
 
 def restore_punctuation(text: str) -> str:

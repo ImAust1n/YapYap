@@ -1,12 +1,28 @@
 import os
-# Set BEFORE any transformers import. This prevents the auto_conversion
-# background thread from hitting HuggingFace's discussions API, which returns
-# 403 for repos with discussions disabled (e.g. grammar_error_correcter_v1).
-os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+import sys
+from pathlib import Path
+
+# Ensure transformers uses the local models directory
+BACKEND_DIR = Path(__file__).resolve().parent
+BASE_DIR = BACKEND_DIR.parent
+MODELS_DIR = BASE_DIR / "models"
+MODELS_DIR.mkdir(exist_ok=True)
+os.environ["HF_HOME"] = str(MODELS_DIR)
+os.environ["TRANSFORMERS_CACHE"] = str(MODELS_DIR)
+
+# Set offline mode ONLY if the model folder exists in our local cache
+# to avoid crashing on first run if the download failed.
+# Prithivida's grammar model creates a folder in the HF_HOME
+grammar_cached = MODELS_DIR / "models--prithivida--grammar_error_correcter_v1"
+if grammar_cached.exists():
+    os.environ["TRANSFORMERS_OFFLINE"] = "1"
+else:
+    os.environ["TRANSFORMERS_OFFLINE"] = "0"
 
 import queue
 import threading
 import time
+import traceback
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
@@ -68,10 +84,23 @@ print("Loading Whisper model... (this may take a few seconds)")
 # -------------------------
 # GLOBAL STATE
 # -------------------------
-MODELS_DIR = BASE_DIR / "models"
-MODELS_DIR.mkdir(exist_ok=True)
-model = WhisperModel(MODEL_SIZE, device=DEVICE, compute_type=COMPUTE_TYPE, download_root=str(MODELS_DIR))
-transcriber = None  # initialized after class definitions
+model = None
+transcriber = None
+
+try:
+    print(f"Initializing Whisper model on {DEVICE}...", flush=True)
+    model = WhisperModel(
+        MODEL_SIZE, 
+        device=DEVICE, 
+        compute_type=COMPUTE_TYPE, 
+        download_root=str(MODELS_DIR),
+        local_files_only=False # Let it check but launcher should have filled it
+    )
+    print("Whisper model loaded successfully.", flush=True)
+except Exception as e:
+    print(f"CRITICAL ERROR loading Whisper model: {e}", flush=True)
+    traceback.print_exc()
+    # Don't exit yet, let uvicorn start so the health check can report the error via logs
 
 audio_queue: "queue.Queue[np.ndarray]" = queue.Queue()
 stop_event = threading.Event()
@@ -122,10 +151,19 @@ class RealTimeTranscriber:
 
     def transcribe(self, audio: np.ndarray) -> list[TranscriptionResult]:
         t_start = time.time()
+        
+        # Log device info if this is the first transcription
+        if not hasattr(self, '_device_logged'):
+            print("--- Audio Device Info ---")
+            print(sd.query_devices())
+            print(f"Default input: {sd.default.device[0]}")
+            self._device_logged = True
+
         segments, _info = self.model.transcribe(
             audio,
             beam_size=1,
             vad_filter=True,
+            vad_parameters=dict(min_silence_duration_ms=500, speech_pad_ms=400),
             language="en",
         )
         decode_latency = _round_ms((time.time() - t_start) * 1000)
@@ -164,6 +202,14 @@ transcriber = RealTimeTranscriber(model)
 def audio_callback(indata, frames, time_data, status):
     if status:
         print("Audio status:", status)
+    
+    # Calculate amplitude to verify mic input
+    amplitude = np.sqrt(np.mean(indata**2))
+    if amplitude > 0.001:  # Threshold to avoid logging silence too often
+        # Just log occasionally to avoid flooding
+        if time.time() % 2 < 0.1:
+            print(f"DEBUG: Audio level: {amplitude:.4f}")
+            
     audio_queue.put(indata.copy())
 
 
