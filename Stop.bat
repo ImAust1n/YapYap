@@ -14,17 +14,18 @@ taskkill /f /im python.exe >nul 2>&1
 echo [*] Stopping Electron app...
 taskkill /f /im electron.exe >nul 2>&1
 
-echo [*] Closing Node.js and terminal...
+echo [*] Closing Node.js processes...
 taskkill /f /im node.exe >nul 2>&1
 
-:: Kill the SpeechForge-App cmd window by its title
-taskkill /fi "windowtitle eq SpeechForge-App" /f >nul 2>&1
-
-:: Also close any cmd windows with npm in the title (fallback)
-taskkill /fi "windowtitle eq npm" /f >nul 2>&1
+echo [*] Closing Electron terminal window...
+if exist "logs\frontend.pid" (
+    set /p FRONTEND_PID=<logs\frontend.pid
+    if defined FRONTEND_PID (
+        taskkill /f /pid !FRONTEND_PID! >nul 2>&1
+    )
+    del "logs\frontend.pid" >nul 2>&1
+)
 
 echo [*] All processes stopped.
 timeout /t 1 >nul
-
-:: Close this Stop.bat window too
 exit

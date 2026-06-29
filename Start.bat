@@ -70,7 +70,8 @@ if exist "electron-app\package.json" (
 )
 
 echo [*] Launching application...
-start "SpeechForge-App" cmd /k "cd /d "%~dp0electron-app" && npm start"
+for /f %%i in ('powershell -NoProfile -Command "(Start-Process cmd -ArgumentList '/k cd /d \"%~dp0electron-app\" ^&^& npm start' -PassThru).Id"') do set FRONTEND_PID=%%i
+echo !FRONTEND_PID! > "%LOG_DIR%\frontend.pid"
 
 echo [*] Application started successfully!
 echo [%date% %time%] Startup complete >> "%STARTUP_LOG%"
