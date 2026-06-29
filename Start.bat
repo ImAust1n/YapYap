@@ -70,7 +70,14 @@ if exist "electron-app\package.json" (
 )
 
 echo [*] Launching application...
-for /f %%i in ('powershell -NoProfile -Command "(Start-Process cmd -ArgumentList '/k cd /d \"%~dp0electron-app\" ^&^& npm start' -PassThru).Id"') do set FRONTEND_PID=%%i
+:: Write a tiny helper script to avoid path escaping issues
+set "SF_LAUNCHER=%TEMP%\sf_start_frontend.bat"
+echo @echo off > "%SF_LAUNCHER%"
+echo cd /d "%~dp0electron-app" >> "%SF_LAUNCHER%"
+echo npm start >> "%SF_LAUNCHER%"
+
+:: Launch it via PowerShell and capture PID
+for /f %%i in ('powershell -NoProfile -Command "(Start-Process cmd -ArgumentList '/k \"%SF_LAUNCHER%\"' -PassThru).Id"') do set FRONTEND_PID=%%i
 echo !FRONTEND_PID! > "%LOG_DIR%\frontend.pid"
 
 echo [*] Application started successfully!
