@@ -1,47 +1,73 @@
 # SpeechForge Dictation
 
-An AI-powered speech dictation desktop application that runs completely locally. It features an automated setup, offline model management, and a seamless native Windows experience.
+An AI-powered speech dictation desktop application that runs **completely locally** — no cloud, no LLMs, no privacy compromise. Real-time speech is cleaned, corrected, and pasted to your cursor in under 1500ms.
 
-## Download & Installation (For Users)
+## Quick Start
 
-1. Navigate to the **[Releases](../../releases)** page on GitHub.
-2. Download the latest `SpeechDictationSetup.exe` installer.
-3. Run the installer and follow the standard setup prompts.
-4. Launch **SpeechForge Dictation** from your Desktop or Start Menu.
-   - **First Launch:** The launcher will display a progress window while it automatically sets up the Python environment and downloads the required offline AI models (approx. 1GB). This will take a few minutes depending on your internet connection.
-   - **Subsequent Launches:** The application will instantly and silently spin up the backend processes and open the frontend interface.
+### Option 1: Download ZIP (Recommended)
 
-## Development & Building from Source
+1. [**Download the latest ZIP**](https://github.com/ImAust1n/YapYap/archive/refs/heads/main.zip)
+2. Extract the folder
+3. Open the `Speech2Text2` folder
+4. Double-click **`Start.bat`** — that's it!
 
-This project includes a complete launcher, installer, and uninstaller distribution system.
+The launcher will automatically:
+- Create a Python virtual environment
+- Install all dependencies
+- Start the backend server
+- Launch the Electron desktop app
 
-### Architecture Overview
-- `launcher/`: Contains the Python code for the single-click executable. Handles auto-venv, dependency installation, model downloading, and background process orchestration.
-- `installer/`: Contains the Inno Setup script (`SpeechDictationSetup.iss`) to compile the final `.exe` Windows installer and post-uninstall cleanup scripts.
-- `backend/`: The FastAPI local server and `faster-whisper` transcription engine.
-- `electron-app/` & `frontend/`: The user interfaces for the application.
+### Option 2: Clone with Git
 
-### Step 1: Build the Electron App (Frontend)
-To ensure the launcher starts the native Electron window instead of the default web browser:
-1. Navigate to the `electron-app/` directory.
-2. Install dependencies: `npm install`
-3. Build the unpacked directory: `npx electron-builder --win --dir`
-4. Ensure `SpeechForge Desktop.exe` is generated inside `electron-app/dist/win-unpacked/`.
+```bash
+git clone https://github.com/ImAust1n/YapYap.git
+cd YapYap/Speech2Text2
+Start.bat
+```
 
-### Step 2: Build the Launcher Executable
-1. Open a command prompt or PowerShell at the root of the project.
-2. Run `build_exe.bat`.
-3. This will install PyInstaller (if not present) and compile `launcher/main.py` into a single background executable located at `build/dist/SpeechDictation.exe`.
+## Batch Scripts
 
-### Step 3: Build the Professional Installer
-1. Download and install [Inno Setup 6](https://jrsoftware.org/isdl.php).
-2. Open `installer/SpeechDictationSetup.iss` in the Inno Setup Compiler.
-3. Click **Compile** (or press `Ctrl+F9`).
-4. This will bundle the launcher executable, backend, frontend, electron app, and uninstallation scripts into a single, professional setup wizard.
-5. The final installer will be saved to `build/installer/SpeechDictationSetup.exe`.
+| Script | Purpose |
+|---|---|
+| `Start.bat` | Installs dependencies and launches the app |
+| `Stop.bat` | Stops the backend server and closes all windows |
+| `Update.bat` | Pulls latest code and updates dependencies |
+| `Uninstall.bat` | Removes `.venv`, `node_modules`, models, and logs |
 
-## Uninstalling
-The installer automatically registers a native Windows Uninstaller. When you uninstall from "Add or Remove Programs", it will:
-1. Run `uninstall_cleanup.bat` to gracefully shut down the background Python process.
-2. Forcefully delete the `.venv` and `models` folders to free up disk space.
-3. Remove all program files, shortcuts, and registry keys.
+## How to Use
+
+1. Run `Start.bat` — the app will appear in your system tray
+2. Press **`Ctrl+Shift+D`** anywhere to activate dictation
+3. Speak — text appears live at your cursor
+4. Press the shortcut again or wait for the session to end
+
+## Architecture
+
+- **Backend** (`backend/app.py`) — FastAPI server running the STT + NLP pipeline
+- **Frontend** (`electron-app/`) — Electron overlay app with global hotkey
+- **Pipeline**: Audio → Whisper STT → Filler Removal → Repetition Detection → Grammar Correction → Tone Control → Formatting → Paste
+
+## Requirements
+
+- Windows 10/11
+- Python 3.10+
+- Node.js 18+
+- Git
+
+All Python and Node dependencies are installed automatically by `Start.bat`.
+
+## Development
+
+```bash
+# Backend
+cd backend
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python app.py
+
+# Frontend (separate terminal)
+cd electron-app
+npm install
+npm start
+```
