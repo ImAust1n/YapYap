@@ -1104,6 +1104,45 @@
             margin-top: 8px;
         }
 
+        /* ─── QUICK START GRID ─────────────────────────── */
+        .qs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .qs-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 11px 16px;
+            border-radius: var(--radius-sm);
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: var(--font-mono);
+            font-size: .78rem;
+            text-decoration: none;
+            transition: border-color .2s, box-shadow .2s, transform .2s;
+            white-space: nowrap;
+        }
+
+        .qs-btn:hover {
+            border-color: var(--accent1);
+            box-shadow: var(--glow-blue);
+            transform: translateY(-2px);
+        }
+
+        .qs-label {
+            margin-top: 20px;
+            font-size: .75rem;
+            font-family: var(--font-mono);
+            color: var(--muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
         @media (max-width: 820px) {
             .cs-inner {
                 grid-template-columns: 1fr;
@@ -1239,9 +1278,9 @@
             <li><a href="#pipeline">Pipeline</a></li>
             <li><a href="#performance">Performance</a></li>
             <li><a href="#usecases">Use Cases</a></li>
-            <li><a href="#coming-soon">Desktop App</a></li>
+            <li><a href="#coming-soon">Download</a></li>
         </ul>
-        <a href="#demo" class="nav-cta">Watch Demo</a>
+        <a href="https://github.com/ImAust1n/YapYap" class="nav-cta">GitHub ↗</a>
     </nav>
 
     <!-- HERO -->
@@ -1511,7 +1550,7 @@
     <!-- DESKTOP APP -->
     <section id="coming-soon">
         <div class="container">
-            <span class="section-label">Now Available</span>
+            <span class="section-label">Available Now · Windows</span>
             <h2 class="section-title">The SpeechForge Desktop App<br /><span
                     style="background:linear-gradient(135deg,var(--accent1),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Zero
                     config, total power</span></h2>
@@ -1547,7 +1586,7 @@
                             and schedule a follow-up review next week.
                         </div>
                         <div class="cs-status-row">
-                            <span class="cs-status-pill pill-sys">⌨ Global Hotkey: ⌥Space</span>
+                            <span class="cs-status-pill pill-sys">⌨ Ctrl+Shift+D</span>
                             <span class="cs-status-pill pill-tray">System Tray</span>
                             <span class="cs-status-pill pill-offline">● Fully Offline</span>
                         </div>
@@ -1576,9 +1615,8 @@
                         <div class="cs-feat">
                             <div class="cs-feat-icon">🖥</div>
                             <div>
-                                <div class="cs-feat-title">Windows · macOS · Linux</div>
-                                <div class="cs-feat-desc">One codebase, three platforms. Built with Tauri for a tiny
-                                    binary footprint and native performance.</div>
+                                <div class="cs-feat-title">Windows Desktop App</div>
+                                <div class="cs-feat-desc">Built with Electron. Runs silently in your system tray — just double-click <code>Start.bat</code> and you're live.</div>
                             </div>
                         </div>
                         <div class="cs-feat">
@@ -1592,12 +1630,16 @@
                     </div>
 
                     <div class="cs-notify">
-                        <input type="email" class="notify-input" id="notifyEmail"
-                            placeholder="your@email.com — get notified at launch" />
-                        <button class="notify-btn" onclick="handleNotify()">Notify Me</button>
+                        <a href="https://github.com/ImAust1n/YapYap/archive/refs/heads/main.zip" class="btn btn-primary" target="_blank">⬇ Download ZIP</a>
+                        <a href="https://github.com/ImAust1n/YapYap" class="btn btn-outline" target="_blank">★ Star on GitHub</a>
                     </div>
-                    <div class="notify-success" id="notifySuccess">✓ You're on the list! We'll email you when it
-                        launches.</div>
+                    <div class="qs-label">Or download individual scripts:</div>
+                    <div class="qs-grid">
+                        <a class="qs-btn" href="https://raw.githubusercontent.com/ImAust1n/YapYap/main/Speech2Text2/Start.bat" download="Start.bat">▶ Start.bat</a>
+                        <a class="qs-btn" href="https://raw.githubusercontent.com/ImAust1n/YapYap/main/Speech2Text2/Stop.bat" download="Stop.bat">⬛ Stop.bat</a>
+                        <a class="qs-btn" href="https://raw.githubusercontent.com/ImAust1n/YapYap/main/Speech2Text2/Update.bat" download="Update.bat">🔄 Update.bat</a>
+                        <a class="qs-btn" href="https://raw.githubusercontent.com/ImAust1n/YapYap/main/Speech2Text2/Uninstall.bat" download="Uninstall.bat">🗑 Uninstall.bat</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1607,10 +1649,10 @@
     <footer>
         <span class="footer-logo">SpeechForge</span>
         <ul class="footer-links">
-            <li><a href="#">GitHub ↗</a></li>
+            <li><a href="https://github.com/ImAust1n/YapYap" target="_blank">GitHub ↗</a></li>
             <li><a href="#demo">Demo</a></li>
             <li><a href="#features">Features</a></li>
-            <li><a href="#coming-soon">Desktop App</a></li>
+            <li><a href="#coming-soon">Download</a></li>
         </ul>
         <span class="footer-credit">Built with ♥ — Intelligent Dictation Engine v1.0</span>
     </footer>

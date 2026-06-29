@@ -3,22 +3,18 @@ setlocal enabledelayedexpansion
 cd /d "%~dp0"
 title AI Speech Dictation - Stop
 
-:: ==============================================================================
-:: Configuration
-:: ==============================================================================
-set "FOLDER_NAME=Speech2Text2"
-:: ==============================================================================
-
 echo ===================================================
-echo Stopping AI Speech Dictation Backend
+echo  Stopping AI Speech Dictation
 echo ===================================================
 
-echo [*] Terminating backend processes...
+echo [*] Stopping Python backend...
+taskkill /f /im pythonw.exe >nul 2>&1
+taskkill /f /im python.exe >nul 2>&1
 
-:: Terminate any python or pythonw process that has our folder name in its command line
-wmic process where "name='python.exe' and commandline like '%%%FOLDER_NAME%%%'" call terminate >nul 2>&1
-wmic process where "name='pythonw.exe' and commandline like '%%%FOLDER_NAME%%%'" call terminate >nul 2>&1
+echo [*] Stopping Electron app and terminal...
+taskkill /f /im electron.exe >nul 2>&1
+taskkill /fi "windowtitle eq SpeechForge-App" /f >nul 2>&1
 
-echo [*] Backend stopped successfully!
+echo [*] All processes stopped.
 timeout /t 2 >nul
 exit /b 0

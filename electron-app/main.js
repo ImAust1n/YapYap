@@ -7,7 +7,7 @@ let tray;
 
 function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-  
+
   mainWindow = new BrowserWindow({
     width: 320,
     height: 180,
@@ -18,6 +18,7 @@ function createWindow() {
     alwaysOnTop: true,
     skipTaskbar: true,
     resizable: false,
+    icon: path.join(__dirname, '..', 'resources', 'app_icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -34,8 +35,8 @@ app.whenReady().then(() => {
   createWindow();
 
   // Create Tray
-  const icon = nativeImage.createEmpty();
-  tray = new Tray(icon);
+  const iconPath = path.join(__dirname, '..', 'resources', 'app_icon.png');
+  tray = new Tray(iconPath);
   const contextMenu = Menu.buildFromTemplate([
     { label: 'Show UI', click: () => mainWindow.show() },
     { label: 'Quit', click: () => { app.isQuiting = true; app.quit(); } }
@@ -47,14 +48,25 @@ app.whenReady().then(() => {
   let lastTrigger = 0;
   const registered = globalShortcut.register('CommandOrControl+Shift+D', () => {
     const now = Date.now();
-    if (now - lastTrigger < 1000) return; // 1 second debounce against auto-repeat
+    if (now - lastTrigger < 500) return; // debounce
     lastTrigger = now;
-    
-    if (!mainWindow.isVisible()) {
-      // showInactive() reveals the overlay WITHOUT stealing focus from the
-      // current text field the user was typing in.
-      mainWindow.showInactive();
-    }
+
+    // Force window to appear on top and be visible no matter what state it's in.
+    // Windows has focus-stealing prevention, so we temporarily boost alwaysOnTop
+    // level to 'screen-saver' to guarantee it surfaces.
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.setAlwaysOnTop(true, 'screen-saver');
+    mainWindow.showInactive();
+    mainWindow.moveTop();
+
+    // Drop back to normal always-on-top after a short delay so other windows
+    // can still go over it if needed.
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.setAlwaysOnTop(true, 'normal');
+      }
+    }, 300);
+
     // Send trigger to renderer
     mainWindow.webContents.send('shortcut-trigger');
   });
