@@ -66,18 +66,26 @@ if %errorlevel% equ 0 (
 
 echo [*] Installing Node.js dependencies...
 if exist "electron-app\package.json" (
-    :: Remove any previously broken Electron binary to force a clean download
+    :: Always wipe the electron folder to force a fresh binary download
     if exist "electron-app\node_modules\electron" (
-        echo [*] Clearing cached Electron binary for fresh install...
         rmdir /S /Q "electron-app\node_modules\electron" >nul 2>&1
     )
     cmd /c "cd electron-app && npm install >> ..\logs\install_frontend.log 2>&1"
-    if !errorlevel! neq 0 (
-        echo [ERROR] npm install failed. Check logs\install_frontend.log for details.
-        echo [*] Trying clean install...
-        rmdir /S /Q "electron-app\node_modules" >nul 2>&1
-        cmd /c "cd electron-app && npm install >> ..\logs\install_frontend.log 2>&1"
-    )
+)
+
+:: Verify the Electron binary was actually downloaded (this is what fails on new machines)
+if not exist "electron-app\node_modules\electron\dist\electron.exe" (
+    echo [*] Electron binary missing - retrying download...
+    rmdir /S /Q "electron-app\node_modules\electron" >nul 2>&1
+    cmd /c "cd electron-app && npm install electron --save-dev >> ..\logs\install_frontend.log 2>&1"
+)
+
+if not exist "electron-app\node_modules\electron\dist\electron.exe" (
+    echo [ERROR] Electron could not be downloaded.
+    echo [*] Please check your internet connection and try again.
+    echo [*] You can also try running manually: cd electron-app ^&^& npm install
+    pause
+    exit /b 1
 )
 
 echo [*] Launching application...
