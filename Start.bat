@@ -159,7 +159,11 @@ if not exist "electron-app\node_modules\electron\dist\electron.exe" (
     rem Force the binary download script to run directly (bypasses npm postinstall skips)
     if exist "electron-app\node_modules\electron\install.js" (
         echo [*] Forcing Electron binary download...
+        set "ELECTRON_SKIP_BINARY_DOWNLOAD=0"
         cmd /c "cd electron-app && node node_modules\electron\install.js"
+        echo [*] Download script finished with exit code !errorlevel!
+    ) else (
+        echo [ERROR] install.js not found in node_modules!
     )
 )
 
