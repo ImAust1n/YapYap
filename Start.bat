@@ -12,9 +12,9 @@ set "STARTUP_LOG=%LOG_DIR%\startup.log"
 set "INSTALL_LOG=%LOG_DIR%\install.log"
 set "UPDATE_LOG=%LOG_DIR%\update.log"
 
-:: ─── BOOTSTRAP ──────────────────────────────────────────────────────────────
-:: If project files are missing (running Start.bat standalone), clone the repo
-:: and relaunch from the installed location automatically.
+rem ─── BOOTSTRAP ──────────────────────────────────────────────────────────────
+rem If project files are missing (running Start.bat standalone), clone the repo
+rem and relaunch from the installed location automatically.
 if not exist "%~dp0backend\app.py" (
     echo ===================================================
     echo  SpeechForge First-Time Setup
@@ -77,7 +77,7 @@ if not exist "%~dp0backend\app.py" (
     start "" "!INSTALL_DIR!\Start.bat"
     exit /b 0
 )
-:: ─── END BOOTSTRAP ──────────────────────────────────────────────────────────
+rem ─── END BOOTSTRAP ──────────────────────────────────────────────────────────
 
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 if not exist "models" mkdir "models"
@@ -118,7 +118,7 @@ if not exist "backend\.venv\Scripts\python.exe" (
 )
 
 echo [*] Installing Python dependencies...
-:: Only run pip install on first setup or if requirements changed
+rem Only run pip install on first setup or if requirements changed
 if not exist "%INSTALL_LOG%" (
     "%VENV_PYTHON%" -m pip install -r "%BACKEND_DIR%\requirements.txt" >> "%INSTALL_LOG%" 2>&1
     echo [*] Python dependencies installed.
@@ -139,7 +139,7 @@ if %errorlevel% equ 0 (
 
 echo [*] Checking Node.js dependencies...
 if exist "electron-app\package.json" (
-    :: Only run npm install if node_modules doesn't exist yet
+    rem Only run npm install if node_modules doesn't exist yet
     if not exist "electron-app\node_modules" (
         echo [*] Installing Node.js dependencies for first time...
         cmd /c "cd electron-app && npm install >> ..\logs\install_frontend.log 2>&1"
@@ -148,7 +148,7 @@ if exist "electron-app\package.json" (
     )
 )
 
-:: Only download Electron binary if it's actually missing
+rem Only download Electron binary if it's actually missing
 if not exist "electron-app\node_modules\electron\dist\electron.exe" (
     echo [*] Electron binary missing - downloading...
     if exist "electron-app\node_modules\electron" (
@@ -166,13 +166,13 @@ if not exist "electron-app\node_modules\electron\dist\electron.exe" (
 )
 
 echo [*] Launching application...
-:: Write a tiny helper script to avoid path escaping issues
+rem Write a tiny helper script to avoid path escaping issues
 set "SF_LAUNCHER=%TEMP%\sf_start_frontend.bat"
 echo @echo off > "%SF_LAUNCHER%"
 echo cd /d "%~dp0electron-app" >> "%SF_LAUNCHER%"
 echo npm start >> "%SF_LAUNCHER%"
 
-:: Launch it via PowerShell and capture PID
+rem Launch it via PowerShell and capture PID
 for /f %%i in ('powershell -NoProfile -Command "(Start-Process cmd -ArgumentList '/k \"%SF_LAUNCHER%\"' -PassThru).Id"') do set FRONTEND_PID=%%i
 echo !FRONTEND_PID! > "%LOG_DIR%\frontend.pid"
 
