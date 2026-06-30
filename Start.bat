@@ -118,8 +118,13 @@ if not exist "backend\.venv\Scripts\python.exe" (
 )
 
 echo [*] Installing Python dependencies...
-"%VENV_PYTHON%" -m pip install -r "%BACKEND_DIR%\requirements.txt" >> "%INSTALL_LOG%" 2>&1
-echo [*] Python dependencies ready.
+:: Only run pip install on first setup or if requirements changed
+if not exist "%INSTALL_LOG%" (
+    "%VENV_PYTHON%" -m pip install -r "%BACKEND_DIR%\requirements.txt" >> "%INSTALL_LOG%" 2>&1
+    echo [*] Python dependencies installed.
+) else (
+    echo [*] Python dependencies already installed. Skipping.
+)
 
 echo [*] Checking if backend is already running...
 tasklist /fi "imagename eq pythonw.exe" | find /i "pythonw.exe" >nul 2>&1
@@ -132,19 +137,23 @@ if %errorlevel% equ 0 (
     timeout /t 5 /nobreak >nul
 )
 
-echo [*] Installing Node.js dependencies...
+echo [*] Checking Node.js dependencies...
 if exist "electron-app\package.json" (
-    :: Always wipe the electron folder to force a fresh binary download
+    :: Only run npm install if node_modules doesn't exist yet
+    if not exist "electron-app\node_modules" (
+        echo [*] Installing Node.js dependencies for first time...
+        cmd /c "cd electron-app && npm install >> ..\logs\install_frontend.log 2>&1"
+    ) else (
+        echo [*] Node.js dependencies already installed. Skipping.
+    )
+)
+
+:: Only download Electron binary if it's actually missing
+if not exist "electron-app\node_modules\electron\dist\electron.exe" (
+    echo [*] Electron binary missing - downloading...
     if exist "electron-app\node_modules\electron" (
         rmdir /S /Q "electron-app\node_modules\electron" >nul 2>&1
     )
-    cmd /c "cd electron-app && npm install >> ..\logs\install_frontend.log 2>&1"
-)
-
-:: Verify the Electron binary was actually downloaded (this is what fails on new machines)
-if not exist "electron-app\node_modules\electron\dist\electron.exe" (
-    echo [*] Electron binary missing - retrying download...
-    rmdir /S /Q "electron-app\node_modules\electron" >nul 2>&1
     cmd /c "cd electron-app && npm install electron --save-dev >> ..\logs\install_frontend.log 2>&1"
 )
 
