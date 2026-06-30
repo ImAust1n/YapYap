@@ -154,7 +154,7 @@ if not exist "electron-app\node_modules\electron\dist\electron.exe" (
     if exist "electron-app\node_modules\electron" (
         rmdir /S /Q "electron-app\node_modules\electron" >nul 2>&1
     )
-    cmd /c "cd electron-app && npm install electron --save-dev >> ..\logs\install_frontend.log 2>&1"
+    cmd /c "cd electron-app && npm install electron --save-dev"
 )
 
 if not exist "electron-app\node_modules\electron\dist\electron.exe" (
