@@ -35,7 +35,7 @@ if not exist "%~dp0backend\app.py" (
     )
 
     :: Check if a VALID install already exists (check for actual file, not just folder)
-    if exist "!INSTALL_DIR!\Speech2Text2\backend\app.py" (
+    if exist "!INSTALL_DIR!\backend\app.py" (
         echo [*] Found existing install - updating...
         cd /d "!INSTALL_DIR!"
         git pull >> "%TEMP%\sf_update.log" 2>&1
@@ -51,7 +51,7 @@ if not exist "%~dp0backend\app.py" (
         git clone --depth=1 https://github.com/ImAust1n/YapYap.git "!INSTALL_DIR!"
 
         :: Verify the clone actually produced the expected files
-        if not exist "!INSTALL_DIR!\Speech2Text2\backend\app.py" (
+        if not exist "!INSTALL_DIR!\backend\app.py" (
             echo [ERROR] Download failed or was incomplete.
             echo [*] Check your internet connection and try again.
             echo [*] Or download manually from: https://github.com/ImAust1n/YapYap
@@ -62,7 +62,7 @@ if not exist "%~dp0backend\app.py" (
     )
 
     echo [*] Relaunching from installed location...
-    start "" "!INSTALL_DIR!\Speech2Text2\Start.bat"
+    start "" "!INSTALL_DIR!\Start.bat"
     exit /b 0
 )
 :: ─── END BOOTSTRAP ──────────────────────────────────────────────────────────
