@@ -66,7 +66,18 @@ if %errorlevel% equ 0 (
 
 echo [*] Installing Node.js dependencies...
 if exist "electron-app\package.json" (
+    :: Remove any previously broken Electron binary to force a clean download
+    if exist "electron-app\node_modules\electron" (
+        echo [*] Clearing cached Electron binary for fresh install...
+        rmdir /S /Q "electron-app\node_modules\electron" >nul 2>&1
+    )
     cmd /c "cd electron-app && npm install >> ..\logs\install_frontend.log 2>&1"
+    if !errorlevel! neq 0 (
+        echo [ERROR] npm install failed. Check logs\install_frontend.log for details.
+        echo [*] Trying clean install...
+        rmdir /S /Q "electron-app\node_modules" >nul 2>&1
+        cmd /c "cd electron-app && npm install >> ..\logs\install_frontend.log 2>&1"
+    )
 )
 
 echo [*] Launching application...
