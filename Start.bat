@@ -12,6 +12,53 @@ set "STARTUP_LOG=%LOG_DIR%\startup.log"
 set "INSTALL_LOG=%LOG_DIR%\install.log"
 set "UPDATE_LOG=%LOG_DIR%\update.log"
 
+:: ─── BOOTSTRAP ──────────────────────────────────────────────────────────────
+:: If project files are missing (running Start.bat standalone), clone the repo
+:: and relaunch from the installed location automatically.
+if not exist "%~dp0backend\app.py" (
+    echo ===================================================
+    echo  SpeechForge First-Time Setup
+    echo ===================================================
+    echo [*] Project files not found.
+    echo [*] Downloading SpeechForge from GitHub...
+    echo.
+
+    set "INSTALL_DIR=%USERPROFILE%\SpeechForge"
+
+    git --version >nul 2>&1
+    if !errorlevel! neq 0 (
+        echo [ERROR] Git is not installed.
+        echo [*] Please install Git from: https://git-scm.com/downloads
+        echo [*] Then run this file again.
+        pause
+        exit /b 1
+    )
+
+    if not exist "!INSTALL_DIR!" (
+        echo [*] Cloning to !INSTALL_DIR! ...
+        git clone --depth=1 https://github.com/ImAust1n/YapYap.git "!INSTALL_DIR!"
+        if !errorlevel! neq 0 (
+            echo [ERROR] Download failed. Check your internet connection.
+            pause
+            exit /b 1
+        )
+        echo [*] Download complete!
+    ) else (
+        echo [*] Found existing install at !INSTALL_DIR! - updating...
+        cd /d "!INSTALL_DIR!"
+        git pull >> "%TEMP%\sf_update.log" 2>&1
+        cd /d "%~dp0"
+    )
+
+    :: Copy this Start.bat into the installed location so it stays up to date
+    copy /Y "%~f0" "!INSTALL_DIR!\Speech2Text2\Start.bat" >nul 2>&1
+
+    echo [*] Relaunching from installed location...
+    start "" "!INSTALL_DIR!\Speech2Text2\Start.bat"
+    exit /b 0
+)
+:: ─── END BOOTSTRAP ──────────────────────────────────────────────────────────
+
 if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 if not exist "models" mkdir "models"
 
@@ -19,6 +66,7 @@ echo ===================================================
 echo  AI Speech Dictation Launcher
 echo ===================================================
 echo [%date% %time%] Launcher started >> "%STARTUP_LOG%"
+
 
 echo [*] Checking prerequisites...
 python --version >nul 2>&1
