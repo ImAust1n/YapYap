@@ -34,24 +34,32 @@ if not exist "%~dp0backend\app.py" (
         exit /b 1
     )
 
-    if not exist "!INSTALL_DIR!" (
+    :: Check if a VALID install already exists (check for actual file, not just folder)
+    if exist "!INSTALL_DIR!\Speech2Text2\backend\app.py" (
+        echo [*] Found existing install - updating...
+        cd /d "!INSTALL_DIR!"
+        git pull >> "%TEMP%\sf_update.log" 2>&1
+        cd /d "%~dp0"
+    ) else (
+        :: Folder might exist but be empty/incomplete - clean it up first
+        if exist "!INSTALL_DIR!" (
+            echo [*] Removing incomplete installation...
+            rmdir /S /Q "!INSTALL_DIR!" >nul 2>&1
+        )
+
         echo [*] Cloning to !INSTALL_DIR! ...
         git clone --depth=1 https://github.com/ImAust1n/YapYap.git "!INSTALL_DIR!"
-        if !errorlevel! neq 0 (
-            echo [ERROR] Download failed. Check your internet connection.
+
+        :: Verify the clone actually produced the expected files
+        if not exist "!INSTALL_DIR!\Speech2Text2\backend\app.py" (
+            echo [ERROR] Download failed or was incomplete.
+            echo [*] Check your internet connection and try again.
+            echo [*] Or download manually from: https://github.com/ImAust1n/YapYap
             pause
             exit /b 1
         )
         echo [*] Download complete!
-    ) else (
-        echo [*] Found existing install at !INSTALL_DIR! - updating...
-        cd /d "!INSTALL_DIR!"
-        git pull >> "%TEMP%\sf_update.log" 2>&1
-        cd /d "%~dp0"
     )
-
-    :: Copy this Start.bat into the installed location so it stays up to date
-    copy /Y "%~f0" "!INSTALL_DIR!\Speech2Text2\Start.bat" >nul 2>&1
 
     echo [*] Relaunching from installed location...
     start "" "!INSTALL_DIR!\Speech2Text2\Start.bat"
