@@ -1,4 +1,3 @@
-@echo off
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 title AI Speech Dictation Launcher
@@ -43,7 +42,7 @@ if not exist "%~dp0backend\app.py" (
         )
         rem Invalid git repo: SpeechForge exists but has no .git folder
         if not exist "!INSTALL_DIR!\.git" (
-            echo [*] Removing incomplete installation - no git data...
+            echo [*] Removing incomplete installation (no git data)...
             rmdir /S /Q "!INSTALL_DIR!" >nul 2>&1
         )
     )
@@ -168,7 +167,6 @@ if not exist "electron-app\node_modules\electron\dist\electron.exe" (
 echo [*] Launching application...
 rem Write a tiny helper script to avoid path escaping issues
 set "SF_LAUNCHER=%TEMP%\sf_start_frontend.bat"
-echo @echo off > "%SF_LAUNCHER%"
 echo cd /d "%~dp0electron-app" >> "%SF_LAUNCHER%"
 echo npm start >> "%SF_LAUNCHER%"
 
