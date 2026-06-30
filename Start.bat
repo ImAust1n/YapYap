@@ -34,6 +34,21 @@ if not exist "%~dp0backend\app.py" (
         exit /b 1
     )
 
+    :: ── Auto-cleanup broken states from old/failed attempts ──────────────────
+    if exist "!INSTALL_DIR!" (
+        :: Old wrong structure: had Speech2Text2 subfolder inside SpeechForge
+        if exist "!INSTALL_DIR!\Speech2Text2" (
+            echo [*] Removing old incorrect installation structure...
+            rmdir /S /Q "!INSTALL_DIR!" >nul 2>&1
+        )
+        :: Invalid git repo: SpeechForge exists but has no .git folder
+        if not exist "!INSTALL_DIR!\.git" (
+            echo [*] Removing incomplete installation (no git data)...
+            rmdir /S /Q "!INSTALL_DIR!" >nul 2>&1
+        )
+    )
+    :: ─────────────────────────────────────────────────────────────────────────
+
     :: Check if a VALID install already exists (check for actual file, not just folder)
     if exist "!INSTALL_DIR!\backend\app.py" (
         echo [*] Found existing install - updating...
@@ -41,11 +56,8 @@ if not exist "%~dp0backend\app.py" (
         git pull >> "%TEMP%\sf_update.log" 2>&1
         cd /d "%~dp0"
     ) else (
-        :: Folder might exist but be empty/incomplete - clean it up first
-        if exist "!INSTALL_DIR!" (
-            echo [*] Removing incomplete installation...
-            rmdir /S /Q "!INSTALL_DIR!" >nul 2>&1
-        )
+        :: Clean up anything left over before fresh clone
+        if exist "!INSTALL_DIR!" rmdir /S /Q "!INSTALL_DIR!" >nul 2>&1
 
         echo [*] Cloning to !INSTALL_DIR! ...
         git clone --depth=1 https://github.com/ImAust1n/YapYap.git "!INSTALL_DIR!"
